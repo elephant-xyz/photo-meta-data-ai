@@ -199,3 +199,52 @@ your-bucket-name/
 ## License
 
 MIT License
+
+Perfect! Now the tool is completely automatic. Here's the updated Google Colab code:
+
+```python
+# Install the tool from GitHub
+!pip install git+https://github.com/elephant-xyz/photo-meta-data-ai.git
+
+# Set AWS credentials
+import os
+os.environ['AWS_ACCESS_KEY_ID'] = 'your-access-key-here'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'your-secret-key-here'
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+os.environ['S3_BUCKET_NAME'] = 'your-bucket-name-here'
+
+# Run the photo categorizer (completely automatic)
+!photo-categorizer
+```
+
+**What it will do automatically:**
+
+1. 📤 **Upload**: All images from `images/` folder to S3
+2. 🔍 **Analyze**: Every image with AWS Rekognition  
+3. 🏷️ **Categorize**: All images into appropriate folders
+4. 📊 **Save Results**: JSON reports for each property
+5. 📊 **Summary**: Final report of all processed properties
+
+**No user prompts!** The tool will:
+- Automatically find all property folders in the images directory
+- Upload everything to S3
+- Process all properties without asking which ones
+- Show progress for each property
+- Give you a final summary
+
+**Just run the code and it will process everything in your images folder automatically!**
+
+Make sure your images are organized like this:
+```
+images/
+├── property-123/
+│   ├── kitchen1.jpg
+│   ├── bedroom1.jpg
+│   └── bathroom1.jpg
+├── property-456/
+│   ├── exterior1.jpg
+│   └── garage1.jpg
+└── property-789/
+    ├── office1.jpg
+    └── dining1.jpg
+```

@@ -335,45 +335,40 @@ def main():
     print("\n✅ Upload completed! Proceeding with categorization...")
 
     # Process all properties automatically
-    property_input = "all"
     print("\n3. Processing all properties automatically...")
     print("\n4. Starting image analysis and categorization...")
+    
+    # Get all properties and process them
+    properties = categorizer.get_all_properties()
+    if not properties:
+        print("No properties found in bucket")
+        sys.exit(1)
 
-    success = False
+    print(f"Found {len(properties)} properties to process")
 
-    if property_input.lower() == 'all':
-        # Process all properties
-        properties = categorizer.get_all_properties()
-        if not properties:
-            print("No properties found in bucket")
-            sys.exit(1)
+    total_successful = 0
+    total_failed = 0
 
-        print(f"Found {len(properties)} properties to process")
-
-        total_successful = 0
-        total_failed = 0
-
-        for i, property_id in enumerate(properties, 1):
-            print(f"\n{'=' * 70}")
-            print(f"Processing Property {i}/{len(properties)}: {property_id}")
-            print(f"{'=' * 70}")
-
-            if categorizer.process_property(property_id):
-                total_successful += 1
-            else:
-                total_failed += 1
-
+    for i, property_id in enumerate(properties, 1):
         print(f"\n{'=' * 70}")
-        print(f"FINAL SUMMARY")
+        print(f"Processing Property {i}/{len(properties)}: {property_id}")
         print(f"{'=' * 70}")
-        print(f"Total properties processed: {len(properties)}")
-        print(f"Successful: {total_successful}")
-        print(f"Failed: {total_failed}")
 
-        success = total_successful > 0
-    else:
-        # Process single property
-        success = categorizer.process_property(property_input)
+        if categorizer.process_property(property_id):
+            total_successful += 1
+        else:
+            total_failed += 1
+
+    print(f"\n{'=' * 70}")
+    print(f"FINAL SUMMARY")
+    print(f"{'=' * 70}")
+    print(f"Total properties processed: {len(properties)}")
+    print(f"Successful: {total_successful}")
+    print(f"Failed: {total_failed}")
+
+    success = total_successful > 0
+
+    # This section is now handled above - removed duplicate code
 
     if success:
         print("\n🎉 Image categorization completed successfully!")
