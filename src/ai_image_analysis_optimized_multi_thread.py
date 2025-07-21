@@ -188,10 +188,10 @@ def list_s3_subfolders():
         return []
 
 def list_s3_subfolders_for_property(property_id):
-    """List all subfolders for a specific property in S3."""
+    """List all category folders for a specific property in S3."""
     try:
         property_prefix = f"{property_id}/"
-        print(f"    [DEBUG] Listing subfolders for property {property_id} with prefix: {property_prefix}")
+        print(f"    [DEBUG] Listing category folders for property {property_id} with prefix: {property_prefix}")
         
         response = s3_client.list_objects_v2(
             Bucket=S3_BUCKET_NAME,
@@ -202,16 +202,16 @@ def list_s3_subfolders_for_property(property_id):
         print(f"    [DEBUG] S3 response keys: {list(response.keys())}")
         print(f"    [DEBUG] CommonPrefixes: {response.get('CommonPrefixes', [])}")
         
-        subfolders = []
+        categories = []
         for prefix in response.get('CommonPrefixes', []):
-            folder_name = prefix['Prefix'].rstrip('/').split('/')[-1]
-            subfolders.append(folder_name)
-            print(f"    [DEBUG] Found subfolder: {folder_name}")
+            category_name = prefix['Prefix'].rstrip('/').split('/')[-1]
+            categories.append(category_name)
+            print(f"    [DEBUG] Found category: {category_name}")
         
-        print(f"    [DEBUG] Total subfolders found for {property_id}: {len(subfolders)}")
-        return subfolders
+        print(f"    [DEBUG] Total categories found for {property_id}: {len(categories)}")
+        return categories
     except Exception as e:
-        print(f"Error listing S3 subfolders for property {property_id}: {e}")
+        print(f"Error listing S3 category folders for property {property_id}: {e}")
         return []
 
 def list_s3_images_in_folder(folder_name, property_id=None):
@@ -2273,26 +2273,26 @@ def main():
         print(f"🏠 Processing Property: {property_id}")
         print(f"{'='*80}")
         
-        # List all subfolders for this property
-        subfolders = list_s3_subfolders_for_property(property_id)
+        # List all category folders for this property
+        categories = list_s3_subfolders_for_property(property_id)
         
-        if not subfolders:
-            print(f"⚠️  No subfolders found for property {property_id}, skipping...")
+        if not categories:
+            print(f"⚠️  No category folders found for property {property_id}, skipping...")
             continue
         
-        print(f"📁 Found {len(subfolders)} subfolders for {property_id}: {', '.join(subfolders)}")
+        print(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
         
-        # Process each subfolder
+        # Process each category folder
         property_cost = 0.0
-        for subfolder in subfolders:
-            # Create subfolder-specific prompt with categorization instructions and IPFS schemas
-            prompt = load_optimized_json_schema_prompt(subfolder, schemas)
+        for category in categories:
+            # Create category-specific prompt with categorization instructions and IPFS schemas
+            prompt = load_optimized_json_schema_prompt(category, schemas)
             
             print(f"\n{'='*60}")
-            print(f"🏠 Processing S3 Subfolder: {subfolder}")
+            print(f"🏠 Processing Category: {category}")
             print(f"{'='*60}")
             
-            cost = process_s3_subfolder_multi_threaded(property_id, subfolder, prompt, schemas, 
+            cost = process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas, 
                                                       batch_size=args.batch_size, max_workers=args.max_workers)
             property_cost += cost
         
@@ -2818,7 +2818,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
                 print(f"    [DEBUG] Creating/updating main relationship file")
                 create_main_relationship_file(relationships, output_dir, property_id)
                 
-                print(f"    [DEBUG] Completed processing subfolder {subfolder}")
+                print(f"    [DEBUG] Completed processing category {category}")
             else:
                 print(f"    [!] No result for processing")
                 
@@ -2839,22 +2839,22 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_s3_subfolder_multi_threaded(property_id, subfolder, prompt, schemas=None, batch_size=5, max_workers=3):
-    """Process a single S3 subfolder with true multi-threading and intelligent layout merging."""
+def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=5, max_workers=3):
+    """Process a single S3 category folder with true multi-threading and intelligent layout merging."""
     start_time = time.time()
     
     output_dir = os.path.join(OUTPUT_BASE_FOLDER, property_id)
     os.makedirs(output_dir, exist_ok=True)
 
-    # List all images in the specific subfolder
-    image_objects = list_s3_images_in_folder(subfolder)
+    # List all images in the specific category folder
+    image_objects = list_s3_images_in_folder(category, property_id)
 
     if not image_objects:
-        print(f"[-] No images found in S3 subfolder: {subfolder}")
+        print(f"[-] No images found in S3 category: {category}")
         return 0.0
 
-    print(f"\n[+] Processing S3 subfolder: {subfolder} | {len(image_objects)} images")
-    print(f"[+] S3 subfolder: {S3_BASE_PREFIX}{subfolder}/")
+    print(f"\n[+] Processing S3 category: {category} | {len(image_objects)} images")
+    print(f"[+] S3 category: {property_id}/{category}/")
     print(f"[+] Output directory: {output_dir}")
     print(f"[+] Two-phase processing: {batch_size} images per batch, {max_workers} workers")
 
@@ -2905,25 +2905,25 @@ def process_s3_subfolder_multi_threaded(property_id, subfolder, prompt, schemas=
                 "properties": {
                     "property_id": property_id,
                     "s3_bucket": S3_BUCKET_NAME,
-                    "s3_prefix": f"{S3_BASE_PREFIX}{property_id}/",
-                    "subfolders": [subfolder]
+                    "s3_prefix": f"{property_id}/",
+                    "categories": [category]
                 }
             }
             with open(property_path, "w") as f:
                 json.dump(property_data, f, indent=2)
             print(f"    [✔] Saved: property.json")
         else:
-            # Update existing property.json to include this subfolder
+            # Update existing property.json to include this category
             try:
                 with open(property_path, "r") as f:
                     property_data = json.load(f)
-                if "subfolders" not in property_data["properties"]:
-                    property_data["properties"]["subfolders"] = []
-                if subfolder not in property_data["properties"]["subfolders"]:
-                    property_data["properties"]["subfolders"].append(subfolder)
+                if "categories" not in property_data["properties"]:
+                    property_data["properties"]["categories"] = []
+                if category not in property_data["properties"]["categories"]:
+                    property_data["properties"]["categories"].append(category)
                 with open(property_path, "w") as f:
                     json.dump(property_data, f, indent=2)
-                print(f"    [✔] Updated: property.json (added {subfolder})")
+                print(f"    [✔] Updated: property.json (added {category})")
             except Exception as e:
                 print(f"    [!] Error updating property.json: {e}")
         
@@ -2937,12 +2937,12 @@ def process_s3_subfolder_multi_threaded(property_id, subfolder, prompt, schemas=
         print(f"    [DEBUG] Creating/updating main relationship file")
         create_main_relationship_file(relationships, output_dir, property_id)
         
-        print(f"    [DEBUG] Completed processing subfolder {subfolder}")
+        print(f"    [DEBUG] Completed processing category {category}")
     else:
         print(f"    [!] No successful results from any batch")
         
     elapsed = time.time() - start_time
-    print(f"[✓] Done: {subfolder} | 💰 ${total_cost:.4f} | ⏱️ {elapsed:.1f} sec")
+    print(f"[✓] Done: {category} | 💰 ${total_cost:.4f} | ⏱️ {elapsed:.1f} sec")
     return total_cost
 
 
