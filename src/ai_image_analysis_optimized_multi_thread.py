@@ -48,7 +48,7 @@ SCHEMA_KEYS = [
     "property", "lot",
     "layout", "structure", "utility", "appliance"
 ]
-VISUAL_TAG_FILE = "./schema/visual-tags.pdf"
+# VISUAL_TAG_FILE = "./schema/visual-tags.pdf"  # Removed dependency on PDF file
 
 # Image optimization settings
 MAX_IMAGE_SIZE = (1024, 1024)
@@ -599,10 +599,16 @@ def optimize_s3_image(s3_key):
                 pass
 
 
-def read_visual_tags(pdf_path):
-    with pdfplumber.open(pdf_path) as pdf:
-        text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
-    return text.strip()
+def read_visual_tags(pdf_path=None):
+    """Read visual tags from PDF file (optional - returns empty string if not available)"""
+    if pdf_path and os.path.exists(pdf_path):
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
+            return text.strip()
+        except Exception as e:
+            print(f"Warning: Could not read visual tags from {pdf_path}: {e}")
+    return ""
 
 
 def load_schemas_from_ipfs():
@@ -2267,7 +2273,7 @@ def main():
 
     print(f"🎯 Processing {len(properties_to_process)} properties: {', '.join(properties_to_process)}")
 
-    visual_tags = read_visual_tags(VISUAL_TAG_FILE)
+    visual_tags = read_visual_tags()  # No longer requires PDF file
     
     # Process each property
     total_cost = 0.0

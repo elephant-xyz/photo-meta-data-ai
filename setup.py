@@ -21,7 +21,6 @@ setup(
         "requests>=2.31.0",
         "Pillow>=10.0.0",
         "pandas>=2.0.0",
-        "pdfplumber>=0.10.0",
     ],
     entry_points={
         "console_scripts": [

@@ -130,4 +130,7 @@ dmypy.json
 
 # AWS credentials (for safety)
 .aws/
-credentials 
+credentials
+
+# Schema files
+schema/visual-tags.pdf 
