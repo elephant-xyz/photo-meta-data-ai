@@ -7,7 +7,7 @@ Processes real estate images using OpenAI and IPFS schemas
 import os
 import sys
 import argparse
-from ai_image_analysis_optimized_multi_thread import main
+from .ai_image_analysis_optimized_multi_thread import main
 
 def setup_environment():
     """Setup environment variables from .env file if it exists"""
