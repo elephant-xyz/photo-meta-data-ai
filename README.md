@@ -10,6 +10,7 @@ AWS Rekognition photo categorization tool for real estate images. Automatically 
 - 📊 **Detailed Results**: Saves categorization results as JSON with confidence scores
 - 🚀 **Batch Processing**: Process single properties or all properties at once
 - 📤 **Local to S3 Upload**: Upload images from local folders to S3 before processing
+- 🤖 **Advanced AI Analysis**: Deep property analysis using OpenAI GPT-4 Vision and IPFS schemas
 
 ## Quick Start
 
@@ -96,6 +97,19 @@ photo-categorizer
 python src/rek.py
 ```
 
+### Run the AI Analyzer
+
+```bash
+# Process all properties with AI analysis
+ai-analyzer --all-properties
+
+# Process a specific property
+ai-analyzer --property-id 30434108090030050
+
+# Advanced usage
+ai-analyzer --all-properties --batch-size 10 --max-workers 5
+```
+
 The tool will give you three options:
 1. **Upload images from local folder to S3** - Only upload, don't categorize
 2. **Process existing images in S3** - Only categorize, don't upload
@@ -158,6 +172,7 @@ your-bucket-name/
 - AWS Account with S3 and Rekognition access
 - AWS credentials configured
 - S3 bucket: Configurable via `S3_BUCKET_NAME` environment variable (default: `photo-metadata-ai`)
+- OpenAI API key (for AI analyzer)
 
 ## Configuration
 
@@ -167,6 +182,7 @@ your-bucket-name/
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
 - `AWS_DEFAULT_REGION`: AWS region (default: us-east-1)
 - `S3_BUCKET_NAME`: Your S3 bucket name (default: photo-metadata-ai)
+- `OPENAI_API_KEY`: Your OpenAI API key (for AI analyzer)
 
 ### Local Folder Structure
 

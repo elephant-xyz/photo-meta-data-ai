@@ -309,7 +309,7 @@ class RekognitionCategorizer:
 def main():
     print("AWS Rekognition Photo Categorizer")
     print("=" * 45)
-    bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
+    bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
     print(f"Target S3 Bucket: {bucket_name}")
     print("=" * 45)
 

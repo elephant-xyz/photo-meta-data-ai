@@ -16,7 +16,7 @@ import mimetypes
 class PropertyImagesUploader:
     def __init__(self):
         self.s3_client = None
-        self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
+        self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
 
     def authenticate_aws(self):
         """Authenticate with AWS S3 using environment variables"""
@@ -207,7 +207,7 @@ class PropertyImagesUploader:
 def main():
     print("Property Images Local to S3 Upload Script")
     print("=" * 45)
-    bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
+    bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
     print(f"Target S3 Bucket: {bucket_name}")
     print("Mode: Upload all properties automatically")
     print("=" * 45)

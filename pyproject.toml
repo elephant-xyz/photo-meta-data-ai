@@ -31,6 +31,7 @@ dependencies = [
 
 [project.scripts]
 photo-categorizer = "src.rek:main"
+ai-analyzer = "src.ai_analyzer:main_cli"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/photo-meta-data-ai"

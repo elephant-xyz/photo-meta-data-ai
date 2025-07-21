@@ -20,6 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "photo-categorizer=src.rek:main",
+            "ai-analyzer=src.ai_analyzer:main_cli",
         ],
     },
     classifiers=[
