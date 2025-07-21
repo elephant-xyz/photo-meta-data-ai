@@ -25,9 +25,13 @@ def validate_environment():
     required_vars = [
         'OPENAI_API_KEY',
         'AWS_ACCESS_KEY_ID', 
-        'AWS_SECRET_ACCESS_KEY',
-        'AWS_DEFAULT_REGION'
+        'AWS_SECRET_ACCESS_KEY'
     ]
+    
+    # Set default region if not provided
+    if not os.getenv('AWS_DEFAULT_REGION'):
+        os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+        print("✓ Set AWS_DEFAULT_REGION to us-east-1 (default)")
     
     missing_vars = []
     for var in required_vars:
