@@ -599,16 +599,7 @@ def optimize_s3_image(s3_key):
                 pass
 
 
-def read_visual_tags(pdf_path=None):
-    """Read visual tags from PDF file (optional - returns empty string if not available)"""
-    if pdf_path and os.path.exists(pdf_path):
-        try:
-            with pdfplumber.open(pdf_path) as pdf:
-                text = "\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
-            return text.strip()
-        except Exception as e:
-            print(f"Warning: Could not read visual tags from {pdf_path}: {e}")
-    return ""
+
 
 
 def load_schemas_from_ipfs():
@@ -640,7 +631,7 @@ def load_schemas_from_ipfs():
     
     return schemas
 
-def load_optimized_json_schema_prompt(visual_tags, folder_name=None, schemas=None):
+def load_optimized_json_schema_prompt(folder_name=None, schemas=None):
     """Optimized prompt with reduced token count while maintaining functionality."""
     if schemas is None:
         # Fallback to local files if IPFS schemas not provided
@@ -2273,7 +2264,7 @@ def main():
 
     print(f"🎯 Processing {len(properties_to_process)} properties: {', '.join(properties_to_process)}")
 
-    visual_tags = read_visual_tags()  # No longer requires PDF file
+    # visual_tags removed - no longer needed
     
     # Process each property
     total_cost = 0.0
@@ -2295,7 +2286,7 @@ def main():
         property_cost = 0.0
         for subfolder in subfolders:
             # Create subfolder-specific prompt with categorization instructions and IPFS schemas
-            prompt = load_optimized_json_schema_prompt(visual_tags, subfolder, schemas)
+            prompt = load_optimized_json_schema_prompt(subfolder, schemas)
             
             print(f"\n{'='*60}")
             print(f"🏠 Processing S3 Subfolder: {subfolder}")
