@@ -147,17 +147,25 @@ def list_s3_folders():
         return []
 
 def list_s3_property_folders():
-    """List property ID folders (not subfolders) in the S3 bucket under the base prefix"""
+    """List property ID folders (not subfolders) in the S3 bucket"""
     try:
+        print(f"    [DEBUG] Listing property folders in bucket {S3_BUCKET_NAME}")
         response = s3_client.list_objects_v2(
             Bucket=S3_BUCKET_NAME,
-            Prefix=S3_BASE_PREFIX,
             Delimiter='/'
         )
         
-        # Get the property ID from the base prefix
-        property_id = S3_BASE_PREFIX.rstrip('/').split('/')[-1]
-        return [property_id]
+        print(f"    [DEBUG] S3 response keys: {list(response.keys())}")
+        print(f"    [DEBUG] CommonPrefixes: {response.get('CommonPrefixes', [])}")
+        
+        properties = []
+        for prefix in response.get('CommonPrefixes', []):
+            property_id = prefix['Prefix'].rstrip('/')
+            properties.append(property_id)
+            print(f"    [DEBUG] Found property: {property_id}")
+        
+        print(f"    [DEBUG] Total properties found: {len(properties)}")
+        return properties
     except Exception as e:
         print(f"Error listing S3 property folders: {e}")
         return []
@@ -2242,10 +2250,21 @@ def main():
 
     # Get all properties from S3
     print(f"\n[→] Listing all properties in S3 bucket {S3_BUCKET_NAME}...")
+    
+    # First, let's see what's actually in the bucket
+    try:
+        response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, MaxKeys=10)
+        print(f"    [DEBUG] Sample objects in bucket:")
+        for obj in response.get('Contents', []):
+            print(f"    [DEBUG] - {obj['Key']}")
+    except Exception as e:
+        print(f"    [DEBUG] Error listing bucket contents: {e}")
+    
     properties = list_s3_property_folders()
     
     if not properties:
-        print("❌ No properties found in S3 bucket. Exiting.")
+        print("❌ No properties found in S3 bucket. Make sure you have run the photo-categorizer first to upload and categorize images.")
+        print("   Expected structure: s3://bucket-name/property-id/category/image.jpg")
         return
     
     print(f"📁 Found {len(properties)} properties: {', '.join(properties)}")
