@@ -16,6 +16,12 @@ setup(
     install_requires=[
         "boto3>=1.26.0",
         "botocore>=1.29.0",
+        "openai>=1.0.0",
+        "python-dotenv>=1.0.0",
+        "requests>=2.31.0",
+        "Pillow>=10.0.0",
+        "pandas>=2.0.0",
+        "pdfplumber>=0.10.0",
     ],
     entry_points={
         "console_scripts": [
