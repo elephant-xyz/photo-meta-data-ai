@@ -9,6 +9,7 @@ AWS Rekognition photo categorization tool for real estate images. Automatically 
 - 📁 **Automatic Organization**: Creates organized folder structure in S3
 - 📊 **Detailed Results**: Saves categorization results as JSON with confidence scores
 - 🚀 **Batch Processing**: Process single properties or all properties at once
+- 📤 **Local to S3 Upload**: Upload images from local folders to S3 before processing
 
 ## Quick Start
 
@@ -66,6 +67,25 @@ export AWS_DEFAULT_REGION='us-east-1'
 export S3_BUCKET_NAME='your-bucket-name'
 ```
 
+### Prepare Your Images
+
+Create a folder structure like this:
+```
+images/
+├── property-123/
+│   ├── kitchen1.jpg
+│   ├── bedroom1.jpg
+│   ├── bathroom1.jpg
+│   └── living1.jpg
+├── property-456/
+│   ├── exterior1.jpg
+│   ├── garage1.jpg
+│   └── pool1.jpg
+└── property-789/
+    ├── office1.jpg
+    └── dining1.jpg
+```
+
 ### Run the Categorizer
 
 ```bash
@@ -76,14 +96,20 @@ photo-categorizer
 python src/rek.py
 ```
 
+The tool will give you three options:
+1. **Upload images from local folder to S3** - Only upload, don't categorize
+2. **Process existing images in S3** - Only categorize, don't upload
+3. **Upload and then process** - Upload images and then categorize them
+
 ## How It Works
 
-1. **Authentication**: Connects to AWS S3 and Rekognition services
-2. **Image Discovery**: Finds all images for the specified property in S3
-3. **AI Analysis**: Uses AWS Rekognition to detect objects and scenes
-4. **Categorization**: Maps detected labels to real estate categories
-5. **Organization**: Copies images to categorized folders in S3
-6. **Results**: Saves detailed categorization results as JSON
+1. **Upload (Optional)**: Uploads images from local `images/` folder to S3
+2. **Authentication**: Connects to AWS S3 and Rekognition services
+3. **Image Discovery**: Finds all images for the specified property in S3
+4. **AI Analysis**: Uses AWS Rekognition to detect objects and scenes
+5. **Categorization**: Maps detected labels to real estate categories
+6. **Organization**: Copies images to categorized folders in S3
+7. **Results**: Saves detailed categorization results as JSON
 
 ## Categories
 
@@ -109,7 +135,7 @@ The tool automatically categorizes images into these real estate categories:
 After processing, your S3 bucket will be organized like this:
 
 ```
-photo-metadata-ai/
+your-bucket-name/
 ├── property-123/
 │   ├── kitchen/
 │   │   ├── kitchen1.jpg
@@ -141,6 +167,20 @@ photo-metadata-ai/
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
 - `AWS_DEFAULT_REGION`: AWS region (default: us-east-1)
 - `S3_BUCKET_NAME`: Your S3 bucket name (default: photo-metadata-ai)
+
+### Local Folder Structure
+
+The tool expects images to be stored locally with this structure:
+```
+images/
+├── property-id-1/
+│   ├── image1.jpg
+│   ├── image2.jpg
+│   └── ...
+└── property-id-2/
+    ├── image1.jpg
+    └── ...
+```
 
 ### S3 Bucket
 

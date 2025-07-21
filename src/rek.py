@@ -319,8 +319,40 @@ def main():
     print("\n1. Authenticating with AWS...")
     categorizer.authenticate_aws()
 
+    # Check if upload is needed
+    print("\n2. Upload Options:")
+    print("1. Upload images from local folder to S3")
+    print("2. Process existing images in S3")
+    print("3. Upload and then process")
+    
+    upload_choice = input("Choose option (1/2/3): ").strip()
+
+    if upload_choice == "1":
+        # Upload only
+        from .uploadtoS3 import PropertyImagesUploader
+        uploader = PropertyImagesUploader()
+        uploader.authenticate_aws()
+        success = uploader.upload_all_properties(bucket_name, "images")
+        if success:
+            print("\n🎉 Upload completed successfully!")
+        else:
+            print("\n❌ Upload failed!")
+            sys.exit(1)
+        return
+    elif upload_choice == "3":
+        # Upload and then process
+        from .uploadtoS3 import PropertyImagesUploader
+        uploader = PropertyImagesUploader()
+        uploader.authenticate_aws()
+        print("\n📤 Uploading images to S3...")
+        upload_success = uploader.upload_all_properties(bucket_name, "images")
+        if not upload_success:
+            print("\n❌ Upload failed! Cannot proceed with categorization.")
+            sys.exit(1)
+        print("\n✅ Upload completed! Proceeding with categorization...")
+
     # Get user input for property ID
-    print("\n2. Select property to process:")
+    print("\n3. Select property to process:")
     print("Enter property ID (or 'all' to process all properties):")
 
     property_input = input("Property ID: ").strip()
@@ -329,7 +361,7 @@ def main():
         print("Error: Property ID is required!")
         sys.exit(1)
 
-    print("\n3. Starting image analysis and categorization...")
+    print("\n4. Starting image analysis and categorization...")
 
     success = False
 
