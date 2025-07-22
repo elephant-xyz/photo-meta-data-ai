@@ -15,6 +15,8 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from collections import defaultdict
 import time
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 
 class RekognitionCategorizer:
@@ -224,8 +226,8 @@ class RekognitionCategorizer:
             self.logger.error(f"Error copying image {source_key}: {e}")
             return False
 
-    def process_property(self, property_id, address):
-        """Process all images for a property"""
+    def process_property(self, property_id, address, max_workers=5):
+        """Process all images for a property with multi-threading"""
         self.logger.info(f"\n{'=' * 60}")
         self.logger.info(f"Processing Property: {property_id}")
         self.logger.info(f"Address: {address}")
@@ -239,8 +241,9 @@ class RekognitionCategorizer:
             return False
         
         self.logger.info(f"📁 Found {len(images)} images for property {property_id}")
+        self.logger.info(f"🚀 Processing with {max_workers} workers for faster Rekognition...")
         
-        # Process each image
+        # Process images with multi-threading
         categorization_results = {
             'property_id': property_id,
             'address': address,
@@ -250,37 +253,33 @@ class RekognitionCategorizer:
             'image_details': []
         }
         
-        for image_key in images:
-            image_name = os.path.basename(image_key)
-            self.logger.info(f"\n🖼️  Processing image: {image_name}")
+        # Use ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all image processing tasks
+            future_to_image = {
+                executor.submit(self.process_image_with_rekognition, image_key, property_id): image_key 
+                for image_key in images
+            }
             
-            # Analyze image with Rekognition
-            labels = self.analyze_image_with_rekognition(image_key)
-            
-            if labels:
-                # Categorize image
-                category = self.categorize_image(labels)
+            # Process completed tasks
+            for future in as_completed(future_to_image):
+                image_key = future_to_image[future]
+                image_name = os.path.basename(image_key)
                 
-                # Copy image to categorized folder
-                if self.copy_image_to_category(image_key, property_id, category, image_name):
-                    categorization_results['categorized_images'] += 1
-                    categorization_results['categories'][category] += 1
+                try:
+                    result = future.result()
                     
-                    # Store image details
-                    image_detail = {
-                        'image_name': image_name,
-                        'original_key': image_key,
-                        'category': category,
-                        'labels': [label['Name'] for label in labels],
-                        'confidence_scores': [label['Confidence'] for label in labels]
-                    }
-                    categorization_results['image_details'].append(image_detail)
-                    
-                    self.logger.info(f"✅ Categorized {image_name} as {category}")
-                else:
-                    self.logger.error(f"❌ Failed to copy {image_name} to category folder")
-            else:
-                self.logger.warning(f"⚠️  No labels detected for {image_name}")
+                    if result['success']:
+                        categorization_results['categorized_images'] += 1
+                        categorization_results['categories'][result['category']] += 1
+                        categorization_results['image_details'].append(result['image_detail'])
+                        
+                        self.logger.info(f"✅ Categorized {image_name} as {result['category']}")
+                    else:
+                        self.logger.warning(f"⚠️  {result['error']}")
+                        
+                except Exception as e:
+                    self.logger.error(f"❌ Error processing {image_name}: {e}")
         
         # Save categorization results
         self.save_categorization_results(property_id, categorization_results)
@@ -290,7 +289,7 @@ class RekognitionCategorizer:
         self.logger.info(f"   Categorized: {categorization_results['categorized_images']}")
         self.logger.info(f"   Categories: {dict(categorization_results['categories'])}")
         
-        return categorization_results['categorized_images'] > 0
+        return categorization_results
 
     def download_categorized_images_to_local(self, property_id):
         """Download categorized images from S3 back to local folders"""
@@ -350,6 +349,109 @@ class RekognitionCategorizer:
             self.logger.error(f"Error downloading categorized images for property {property_id}: {e}")
             return False
 
+    def print_comprehensive_summary(self, all_results):
+        """Print comprehensive summary of all properties and categories"""
+        print("\n" + "="*80)
+        print("📊 COMPREHENSIVE CATEGORIZATION SUMMARY")
+        print("="*80)
+        
+        total_properties = len(all_results)
+        total_images = sum(result['total_images'] for result in all_results.values())
+        total_categorized = sum(result['categorized_images'] for result in all_results.values())
+        
+        print(f"\n🏠 TOTAL PROPERTIES PROCESSED: {total_properties}")
+        print(f"🖼️  TOTAL IMAGES: {total_images}")
+        print(f"✅ TOTAL CATEGORIZED: {total_categorized}")
+        print(f"📈 SUCCESS RATE: {(total_categorized/total_images*100):.1f}%" if total_images > 0 else "📈 SUCCESS RATE: N/A")
+        
+        # Overall category statistics
+        all_categories = defaultdict(int)
+        for result in all_results.values():
+            for category, count in result['categories'].items():
+                all_categories[category] += count
+        
+        print(f"\n📁 OVERALL CATEGORY BREAKDOWN:")
+        for category, count in sorted(all_categories.items(), key=lambda x: x[1], reverse=True):
+            print(f"   {category}: {count} images")
+        
+        # Property-by-property breakdown
+        print(f"\n🏠 PROPERTY-BY-PROPERTY BREAKDOWN:")
+        print("-" * 80)
+        
+        for property_id, result in all_results.items():
+            address = result.get('address', 'N/A')
+            print(f"\n📍 Property: {property_id}")
+            print(f"   Address: {address}")
+            print(f"   Total Images: {result['total_images']}")
+            print(f"   Categorized: {result['categorized_images']}")
+            print(f"   Success Rate: {(result['categorized_images']/result['total_images']*100):.1f}%" if result['total_images'] > 0 else "   Success Rate: N/A")
+            
+            if result['categories']:
+                print(f"   Categories:")
+                for category, count in sorted(result['categories'].items(), key=lambda x: x[1], reverse=True):
+                    print(f"     • {category}: {count} images")
+            else:
+                print(f"   Categories: None")
+        
+        # Top detected labels
+        all_labels = defaultdict(int)
+        for result in all_results.values():
+            for image_detail in result['image_details']:
+                for label in image_detail['labels']:
+                    all_labels[label] += 1
+        
+        if all_labels:
+            print(f"\n🏷️  TOP DETECTED LABELS:")
+            for label, count in sorted(all_labels.items(), key=lambda x: x[1], reverse=True)[:10]:
+                print(f"   • {label}: {count} times")
+        
+        print("\n" + "="*80)
+
+    def process_image_with_rekognition(self, image_key, property_id):
+        """Process a single image with Rekognition (for multi-threading)"""
+        try:
+            image_name = os.path.basename(image_key)
+            
+            # Analyze image with Rekognition
+            labels = self.analyze_image_with_rekognition(image_key)
+            
+            if labels:
+                # Categorize image
+                category = self.categorize_image(labels)
+                
+                # Copy image to categorized folder
+                if self.copy_image_to_category(image_key, property_id, category, image_name):
+                    # Store image details
+                    image_detail = {
+                        'image_name': image_name,
+                        'original_key': image_key,
+                        'category': category,
+                        'labels': [label['Name'] for label in labels],
+                        'confidence_scores': [label['Confidence'] for label in labels]
+                    }
+                    
+                    return {
+                        'success': True,
+                        'image_detail': image_detail,
+                        'category': category
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': f"Failed to copy {image_name} to category folder"
+                    }
+            else:
+                return {
+                    'success': False,
+                    'error': f"No labels detected for {image_name}"
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Error processing {image_key}: {str(e)}"
+            }
+
     def save_categorization_results(self, property_id, results):
         """Save categorization results as JSON in S3"""
         try:
@@ -370,8 +472,8 @@ class RekognitionCategorizer:
         except ClientError as e:
             self.logger.error(f"Error saving categorization results for {property_id}: {e}")
 
-    def process_all_properties_from_seed(self, seed_data_path):
-        """Process all properties listed in seed.csv"""
+    def process_all_properties_from_seed(self, seed_data_path, max_workers=5):
+        """Process all properties listed in seed.csv with comprehensive summary"""
         self.logger.info("Starting photo categorization workflow...")
         
         # Load seed data
@@ -381,7 +483,8 @@ class RekognitionCategorizer:
             self.logger.error("Failed to load seed data. Exiting.")
             return False
         
-        # Process each property
+        # Process each property and collect results
+        all_results = {}
         total_properties = 0
         successful_properties = 0
         
@@ -391,14 +494,28 @@ class RekognitionCategorizer:
             self.logger.info(f"Address: {address}")
             self.logger.info(f"{'='*80}")
             
-            # Process the property
-            if self.process_property(parcel_id, address):
+            # Process the property with multi-threading
+            result = self.process_property(parcel_id, address, max_workers)
+            if result and result['categorized_images'] > 0:
                 successful_properties += 1
+                all_results[parcel_id] = result
                 self.logger.info(f"✓ Successfully processed property {parcel_id}")
             else:
                 self.logger.warning(f"⚠️  No images found or failed to process property {parcel_id}")
+                # Add failed property to results for summary
+                all_results[parcel_id] = {
+                    'property_id': parcel_id,
+                    'address': address,
+                    'total_images': 0,
+                    'categorized_images': 0,
+                    'categories': defaultdict(int),
+                    'image_details': []
+                }
             
             total_properties += 1
+        
+        # Print comprehensive summary
+        self.print_comprehensive_summary(all_results)
         
         # Final summary
         self.logger.info(f"\n{'='*70}")
@@ -474,9 +591,9 @@ def main():
 
     # Process all properties from seed.csv
     logger.info("\n4. Processing all properties from seed.csv...")
-    logger.info("\n5. Starting image analysis and categorization...")
+    logger.info("\n5. Starting image analysis and categorization with multi-threading...")
     
-    success = categorizer.process_all_properties_from_seed(seed_data_path)
+    success = categorizer.process_all_properties_from_seed(seed_data_path, max_workers=5)
 
     if success:
         logger.info("\n🎉 Image categorization completed successfully!")
