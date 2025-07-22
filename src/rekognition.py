@@ -292,6 +292,64 @@ class RekognitionCategorizer:
         
         return categorization_results['categorized_images'] > 0
 
+    def download_categorized_images_to_local(self, property_id):
+        """Download categorized images from S3 back to local folders"""
+        try:
+            # Create local property folder
+            local_property_path = os.path.join("images", property_id)
+            os.makedirs(local_property_path, exist_ok=True)
+            
+            # List all categorized images in S3
+            prefix = f"{property_id}/"
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix=prefix
+            )
+            
+            if 'Contents' not in response:
+                self.logger.warning(f"No categorized images found for property {property_id}")
+                return False
+            
+            downloaded_count = 0
+            
+            for obj in response['Contents']:
+                s3_key = obj['Key']
+                
+                # Skip the original images and results files
+                if s3_key.endswith('/') or s3_key.endswith('categorization_results.json'):
+                    continue
+                
+                # Extract category from S3 key: property_id/category/image.jpg
+                key_parts = s3_key.split('/')
+                if len(key_parts) >= 3:
+                    category = key_parts[1]
+                    image_name = key_parts[2]
+                    
+                    # Create local category folder
+                    local_category_path = os.path.join(local_property_path, category)
+                    os.makedirs(local_category_path, exist_ok=True)
+                    
+                    # Download image to local
+                    local_image_path = os.path.join(local_category_path, image_name)
+                    
+                    try:
+                        self.s3_client.download_file(
+                            self.bucket_name,
+                            s3_key,
+                            local_image_path
+                        )
+                        downloaded_count += 1
+                        self.logger.info(f"✓ Downloaded {s3_key} to {local_image_path}")
+                    except Exception as e:
+                        self.logger.error(f"❌ Failed to download {s3_key}: {e}")
+            
+            self.logger.info(f"✅ Downloaded {downloaded_count} categorized images for property {property_id}")
+            return downloaded_count > 0
+            
+        except Exception as e:
+            self.logger.error(f"Error downloading categorized images for property {property_id}: {e}")
+            return False
+
     def save_categorization_results(self, property_id, results):
         """Save categorization results as JSON in S3"""
         try:
@@ -422,8 +480,23 @@ def main():
 
     if success:
         logger.info("\n🎉 Image categorization completed successfully!")
-        logger.info("\nCategorized images are now organized in folders:")
+        logger.info("\nCategorized images are now organized in S3:")
         logger.info(f"s3://{bucket_name}/property-id/category/image.jpg")
+        
+        # Download categorized images to local
+        logger.info("\n6. Downloading categorized images to local folders...")
+        parcel_mapping = categorizer.load_seed_data(seed_data_path)
+        
+        for parcel_id, address in parcel_mapping.items():
+            logger.info(f"\n📥 Downloading categorized images for property {parcel_id}...")
+            download_success = categorizer.download_categorized_images_to_local(parcel_id)
+            if download_success:
+                logger.info(f"✅ Successfully downloaded categorized images for {parcel_id}")
+            else:
+                logger.warning(f"⚠️  Failed to download categorized images for {parcel_id}")
+        
+        logger.info("\n🎉 All categorized images downloaded to local folders!")
+        logger.info("Local structure: images/parcel_id/category/image.jpg")
     else:
         logger.error("\n❌ Image categorization failed!")
         sys.exit(1)

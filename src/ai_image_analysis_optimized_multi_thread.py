@@ -2250,6 +2250,71 @@ def print_final_statistics():
     logger.info("=" * 60)
 
 
+def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_size=5, max_workers=3):
+    """Process all properties from local categorized folders"""
+    try:
+        # Load seed data
+        df = pd.read_csv(seed_data_path)
+        logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
+        
+        # Get all property IDs
+        property_ids = df['parcel_id'].astype(str).tolist()
+        logger.info(f"📁 Processing {len(property_ids)} properties from local folders")
+        
+        total_processed = 0
+        total_images = 0
+        
+        for property_id in property_ids:
+            logger.info(f"\n{'='*80}")
+            logger.info(f"Processing Property: {property_id}")
+            logger.info(f"{'='*80}")
+            
+            # Check if local property folder exists
+            local_property_path = os.path.join("images", property_id)
+            if not os.path.exists(local_property_path):
+                logger.warning(f"⚠️  Local property folder not found: {local_property_path}")
+                continue
+            
+            # Get all category folders
+            category_folders = []
+            for item in os.listdir(local_property_path):
+                item_path = os.path.join(local_property_path, item)
+                if os.path.isdir(item_path):
+                    category_folders.append(item)
+            
+            if not category_folders:
+                logger.warning(f"⚠️  No category folders found for property {property_id}")
+                continue
+            
+            logger.info(f"📁 Found {len(category_folders)} category folders for property {property_id}")
+            
+            # Process each category folder
+            for category in category_folders:
+                logger.info(f"\n🖼️  Processing category: {category}")
+                success = process_local_category_folder(
+                    property_id, category, prompt, schemas, batch_size, max_workers
+                )
+                if success:
+                    total_processed += 1
+                    # Count images in this category
+                    category_path = os.path.join(local_property_path, category)
+                    image_count = len([f for f in os.listdir(category_path) 
+                                     if os.path.splitext(f)[1].lower() in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}])
+                    total_images += image_count
+                    logger.info(f"✅ Successfully processed {image_count} images in {category}")
+                else:
+                    logger.warning(f"⚠️  Failed to process category {category}")
+        
+        logger.info(f"\n🎉 Processing completed!")
+        logger.info(f"📊 Total properties processed: {total_processed}")
+        logger.info(f"📊 Total images processed: {total_images}")
+        
+        return total_processed > 0
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing local properties: {e}")
+        return False
+
 def main():
     import argparse
     import sys
@@ -2259,6 +2324,7 @@ def main():
     parser = argparse.ArgumentParser(description='AI Image Analysis for Real Estate Properties')
     parser.add_argument('--property-id', type=str, help='Specific property ID to process (optional)')
     parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
+    parser.add_argument('--local-folders', action='store_true', help='Process from local categorized folders')
     parser.add_argument('--batch-size', type=int, default=5, help='Batch size for processing (default: 5)')
     parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
@@ -2335,7 +2401,18 @@ def main():
     logger.info(f"📁 Found {len(properties)} properties from seed.csv: {', '.join(properties)}")
 
     # Filter properties based on arguments
-    if args.property_id:
+    if args.local_folders:
+        # Process from local categorized folders
+        logger.info("🖥️  Processing from local categorized folders...")
+        prompt = load_optimized_json_schema_prompt(None, schemas)
+        success = process_all_local_properties(seed_data_path, prompt, schemas, 
+                                             batch_size=args.batch_size, max_workers=args.max_workers)
+        if success:
+            logger.info("🎉 Local folder processing completed successfully!")
+        else:
+            logger.error("❌ Local folder processing failed!")
+        return
+    elif args.property_id:
         if args.property_id not in properties:
             logger.error(f"❌ Property {args.property_id} not found in seed.csv.")
             return
@@ -2343,14 +2420,14 @@ def main():
     elif args.all_properties:
         properties_to_process = properties
     else:
-        logger.error("❌ Please specify either --property-id or --all-properties")
+        logger.error("❌ Please specify either --property-id, --all-properties, or --local-folders")
         return
 
-    logger.info(f"🎯 Processing {len(properties_to_process)} properties: {', '.join(properties_to_process)}")
+    logger.info(f"🎯 Processing {len(properties_to_process)} properties from S3: {', '.join(properties_to_process)}")
 
     # visual_tags removed - no longer needed
     
-    # Process each property
+    # Process each property from S3
     total_cost = 0.0
     for property_id in properties_to_process:
         logger.info(f"\n{'='*80}")
@@ -2922,6 +2999,80 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     print(f"[✓] Done: {subfolder} | 💰 ${property_cost:.4f} | ⏱️ {elapsed:.1f} sec")
     return property_cost
 
+
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=5, max_workers=3):
+    """Process images from local categorized folders"""
+    try:
+        # Local folder path: images/property_id/category/
+        local_folder_path = os.path.join("images", property_id, category)
+        
+        if not os.path.exists(local_folder_path):
+            logger.warning(f"⚠️  Local folder not found: {local_folder_path}")
+            return False
+        
+        # Get all image files in the local folder
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
+        image_files = []
+        
+        for file in os.listdir(local_folder_path):
+            if os.path.splitext(file)[1].lower() in image_extensions:
+                image_path = os.path.join(local_folder_path, file)
+                image_files.append(image_path)
+        
+        if not image_files:
+            logger.warning(f"⚠️  No images found in local folder: {local_folder_path}")
+            return False
+        
+        logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
+        
+        # Process images in batches
+        batches = [image_files[i:i + batch_size] for i in range(0, len(image_files), batch_size)]
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            
+            for batch_num, batch in enumerate(batches, 1):
+                future = executor.submit(process_image_batch, batch, prompt, batch_num)
+                futures.append(future)
+            
+            # Wait for all batches to complete
+            batch_results = []
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        batch_results.append(result)
+                except Exception as e:
+                    logger.error(f"❌ Batch processing failed: {e}")
+        
+        if batch_results:
+            # Merge all batch results
+            merged_result = merge_batch_results_intelligently(batch_results)
+            
+            # Generate output files
+            output_dir = os.path.join("output", property_id)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Generate individual object files
+            object_files = generate_individual_object_files(merged_result, image_files, output_dir, 1)
+            
+            # Generate relationships
+            property_cid = generate_placeholder_cid("property", property_id)
+            relationship_files = generate_relationships_from_object_files(
+                object_files, image_files, property_cid, 1, local_folder_path
+            )
+            
+            # Create main relationship file
+            create_main_relationship_file(relationship_files, output_dir, property_id)
+            
+            logger.info(f"✅ Successfully processed {len(image_files)} images from {local_folder_path}")
+            return True
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing local folder {local_folder_path}: {e}")
+        return False
 
 def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=5, max_workers=3):
     """Process a single S3 category folder with true multi-threading and intelligent layout merging."""
