@@ -123,10 +123,13 @@ class PropertyImagesUploader:
             self.logger.error(f"Error uploading {file_path}: {e}")
             return False, 0
 
-    def upload_property_images(self, property_id, s3_bucket=None, images_dir="images"):
+    def upload_property_images(self, property_id, s3_bucket=None, images_dir=None):
         """Upload all images for a specific property"""
         if s3_bucket is None:
             s3_bucket = self.bucket_name
+        
+        if images_dir is None:
+            images_dir = os.getenv('IMAGE_FOLDER_NAME', 'images')
 
         property_folder = Path(images_dir) / property_id
 
@@ -163,10 +166,13 @@ class PropertyImagesUploader:
 
         return uploaded_count > 0
 
-    def upload_all_properties_from_seed(self, seed_data_path, s3_bucket=None, images_dir="images"):
+    def upload_all_properties_from_seed(self, seed_data_path, s3_bucket=None, images_dir=None):
         """Upload images for all properties listed in seed.csv"""
         if s3_bucket is None:
             s3_bucket = self.bucket_name
+        
+        if images_dir is None:
+            images_dir = os.getenv('IMAGE_FOLDER_NAME', 'images')
 
         self.logger.info("Starting upload for all properties from seed.csv...")
 
@@ -253,7 +259,7 @@ def main():
 
     # Configuration
     s3_bucket = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
-    images_dir = "images"
+    images_dir = os.getenv('IMAGE_FOLDER_NAME', 'images')
 
     logger.info(f"\n2. Configuration:")
     logger.info(f"   S3 Bucket: {s3_bucket}")

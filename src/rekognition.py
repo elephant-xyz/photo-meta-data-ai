@@ -21,7 +21,6 @@ class RekognitionCategorizer:
         self.s3_client = None
         self.rekognition_client = None
         self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
-        self.images_dir = os.getenv('IMAGES_DIR', 'images')
         
         # Setup logging
         self.setup_logging()
