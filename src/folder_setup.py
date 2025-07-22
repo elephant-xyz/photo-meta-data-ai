@@ -42,12 +42,12 @@ def load_environment():
     for env_path in env_paths:
         if os.path.exists(env_path):
             load_dotenv(env_path)
-            logger.info(f"✓ Loaded environment from {env_path}")
+            print(f"✓ Loaded environment from {env_path}")
             env_loaded = True
             break
     
     if not env_loaded:
-        logger.warning("No .env file found, using system environment variables")
+        print("⚠️  No .env file found, using system environment variables")
     
     return env_loaded
 
@@ -59,9 +59,9 @@ def validate_seed_file(seed_path):
     
     try:
         df = pd.read_csv(seed_path)
-        logger.info(f"✓ Loaded seed file: {seed_path}")
-        logger.info(f"  - Rows: {len(df)}")
-        logger.info(f"  - Columns: {list(df.columns)}")
+        print(f"✓ Loaded seed file: {seed_path}")
+        print(f"  - Rows: {len(df)}")
+        print(f"  - Columns: {list(df.columns)}")
         
         if 'parcel_id' not in df.columns:
             raise ValueError("The seed.csv file must contain a 'parcel_id' column.")
@@ -77,11 +77,11 @@ def create_folder_structure(df, base_path, image_folder_name):
     # Create the root image folder
     image_folder_path = os.path.join(base_path, image_folder_name)
     os.makedirs(image_folder_path, exist_ok=True)
-    logger.info(f"✓ Created root folder: {image_folder_path}")
+    print(f"✓ Created root folder: {image_folder_path}")
     
     # Get unique parcel IDs
     parcel_ids = df['parcel_id'].dropna().unique()
-    logger.info(f"Found {len(parcel_ids)} unique parcel IDs")
+    print(f"Found {len(parcel_ids)} unique parcel IDs")
     
     # Create subfolders for each parcel ID
     created_folders = []
@@ -93,9 +93,9 @@ def create_folder_structure(df, base_path, image_folder_name):
         try:
             os.makedirs(folder_path, exist_ok=True)
             created_folders.append(folder_name)
-            logger.info(f"✓ Created folder: {folder_name}")
+            print(f"✓ Created folder: {folder_name}")
         except Exception as e:
-            logger.error(f"❌ Failed to create folder {folder_name}: {e}")
+            print(f"❌ Failed to create folder {folder_name}: {e}")
     
     return created_folders
 
