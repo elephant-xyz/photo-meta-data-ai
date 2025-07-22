@@ -125,7 +125,9 @@ def fetch_schema_from_ipfs(cid):
             logger.info(f"Trying to fetch {cid} from {gateway}")
             response = requests.get(url, timeout=60)
             response.raise_for_status()
-            return response.json()
+            schema_data = response.json()
+            logger.info(f"✓ Successfully fetched schema from {gateway}")
+            return schema_data
         except Exception as e:
             logger.warning(f"Error fetching from {gateway}: {e}")
             continue
@@ -975,7 +977,7 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
     # Fetch file schema from IPFS
     file_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["file"])
     if not file_schema:
-        print("    [!] Warning: Could not fetch file schema from IPFS, using default")
+        logger.warning("Could not fetch file schema from IPFS, using default")
         file_schema = {
             "type": "file",
             "properties": {
@@ -2335,6 +2337,13 @@ def main():
         return
     
     logger.info(f"✓ Successfully loaded {len(schemas)} schemas from IPFS")
+    
+    # Debug: Check which schemas were loaded
+    for schema_name, schema_data in schemas.items():
+        if schema_data:
+            logger.info(f"✓ Loaded {schema_name} schema with {len(schema_data.get('properties', {}))} properties")
+        else:
+            logger.warning(f"⚠️  {schema_name} schema is empty")
 
     # Authenticate with AWS
     if not authenticate_aws():
