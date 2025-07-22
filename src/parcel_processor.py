@@ -102,21 +102,33 @@ class ParcelProcessor:
             sys.exit(1)
 
     def load_upload_results(self, upload_results_path):
-        """Load upload results CSV to get property CIDs and data CIDs"""
+        """Load upload results CSV to get property CIDs and parcel IDs"""
         try:
             df = pd.read_csv(upload_results_path)
             self.logger.info(f"✓ Loaded {len(df)} records from upload_results.csv")
             
-            # Create mapping from dataGroupCid to propertyCid
-            cid_mapping = {}
+            # Create mapping from parcel_id to propertyCid
+            # Extract parcel_id from filePath: "/content/output/52434205310037080/..."
+            parcel_to_property_mapping = {}
             for _, row in df.iterrows():
-                data_group_cid = row['dataGroupCid']
+                file_path = row['filePath']
                 property_cid = row['propertyCid']
-                cid_mapping[data_group_cid] = property_cid
-                self.logger.debug(f"Mapped {data_group_cid} -> {property_cid}")
+                
+                # Extract parcel_id from filePath
+                # Format: "/content/output/PARCEL_ID/..."
+                try:
+                    # Split by '/' and get the parcel_id part
+                    path_parts = file_path.split('/')
+                    if len(path_parts) >= 4:  # /content/output/PARCEL_ID/...
+                        parcel_id = path_parts[3]  # Index 3 is the parcel_id
+                        parcel_to_property_mapping[parcel_id] = property_cid
+                        self.logger.debug(f"Mapped parcel {parcel_id} -> property {property_cid}")
+                except Exception as e:
+                    self.logger.warning(f"Could not extract parcel_id from filePath: {file_path}")
+                    continue
             
-            self.logger.info(f"✓ Created {len(cid_mapping)} CID mappings")
-            return cid_mapping
+            self.logger.info(f"✓ Created {len(parcel_to_property_mapping)} parcel to property mappings")
+            return parcel_to_property_mapping
             
         except Exception as e:
             self.logger.error(f"Error loading upload_results.csv: {e}")
@@ -269,10 +281,10 @@ class ParcelProcessor:
         self.logger.info("Starting parcel processing workflow...")
         
         # Load data from CSV files
-        cid_mapping = self.load_upload_results(upload_results_path)
+        parcel_to_property_mapping = self.load_upload_results(upload_results_path)
         parcel_mapping = self.load_seed_data(seed_data_path)
         
-        if not cid_mapping:
+        if not parcel_to_property_mapping:
             self.logger.error("Failed to load upload results. Exiting.")
             return False
             
@@ -286,16 +298,7 @@ class ParcelProcessor:
         
         for parcel_id, address in parcel_mapping.items():
             # Find the corresponding property CID
-            # We need to match based on some criteria - for now, let's assume
-            # the parcel_id is used as a key in the upload results
-            property_cid = None
-            
-            # Look for matching property CID in upload results
-            for data_group_cid, prop_cid in cid_mapping.items():
-                # This is a simplified matching - you may need to adjust based on your data structure
-                if parcel_id in data_group_cid or data_group_cid in parcel_id:
-                    property_cid = prop_cid
-                    break
+            property_cid = parcel_to_property_mapping.get(parcel_id)
             
             if not property_cid:
                 self.logger.warning(f"No property CID found for parcel {parcel_id}")
