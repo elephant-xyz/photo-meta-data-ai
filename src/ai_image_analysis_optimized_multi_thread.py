@@ -798,7 +798,6 @@ def call_openai_optimized_s3(image_objects, prompt):
     for attempt in range(max_retries):
         try:
             images_in_batch = len(image_objects[:10])
-            print(f"[DEBUG] Starting OpenAI API call for {images_in_batch} images (attempt {attempt + 1}/{max_retries})")
 
             # Thread-safe update of global stats
             with stats_lock:
@@ -811,10 +810,7 @@ def call_openai_optimized_s3(image_objects, prompt):
                 ]}
             ]
 
-            print(f"[DEBUG] Processing {len(image_objects[:10])} images for API call")
             for i, image_obj in enumerate(image_objects[:10]):
-                print(f"[DEBUG] Processing image {i+1}/{len(image_objects[:10])}: {image_obj['key']}")
-                
                 # Handle both local files and S3 files
                 if image_obj['key'].startswith('s3://') or '/' in image_obj['key']:
                     # Local file path
@@ -824,15 +820,11 @@ def call_openai_optimized_s3(image_objects, prompt):
                     image_b64 = optimize_s3_image(image_obj['key'])
                 
                 if image_b64:
-                    print(f"[DEBUG] Successfully encoded image {i+1}")
                     messages[1]["content"].append({
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}
                     })
-                else:
-                    print(f"[DEBUG] Failed to encode image {i+1}")
 
-            print(f"[DEBUG] Sending request to OpenAI API...")
             try:
                 response = client.chat.completions.create(
                     model="gpt-4o",
@@ -840,10 +832,7 @@ def call_openai_optimized_s3(image_objects, prompt):
                     temperature=0,
                     timeout=60  # Reduced timeout to 1 minute
                 )
-                print(f"[DEBUG] Received response from OpenAI API")
             except Exception as api_error:
-                print(f"[ERROR] OpenAI API call failed: {api_error}")
-                print(f"[DEBUG] API error type: {type(api_error).__name__}")
                 raise api_error
 
             usage = response.usage
@@ -860,27 +849,15 @@ def call_openai_optimized_s3(image_objects, prompt):
                 TOTAL_COMPLETION_TOKENS += completion_tokens
                 TOTAL_COST += total_cost
 
-            print(f"[TOKENS] Prompt: {prompt_tokens}, Completion: {completion_tokens}")
-            print(f"[COST] ${total_cost:.6f} | Images in batch: {images_in_batch}")
-
             result = try_parse_json(response.choices[0].message.content)
-            print(f"[DEBUG] Parsed JSON result: {result is not None}")
             return result, total_cost
 
         except Exception as e:
-            image_names = ", ".join(obj['name'] for obj in image_objects)
-            print(f"[ERROR] API failed for batch: {image_names}\nReason: {e}")
-            print(f"[DEBUG] Exception type: {type(e).__name__}")
-            
             if attempt < max_retries - 1:
-                print(f"[DEBUG] Retrying in {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
                 import time
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Exponential backoff
             else:
-                print(f"[ERROR] Max retries reached. Giving up.")
-                import traceback
-                traceback.print_exc()
                 return None, 0.0
 
     return None, 0.0
@@ -3302,8 +3279,6 @@ def merge_multiple_layouts(layouts):
 def process_image_batch(image_batch, prompt, batch_num):
     """Process a single batch of images with OpenAI API."""
     try:
-        print(f"    [→] Processing batch {batch_num} ({len(image_batch)} images)")
-        
         # Convert image paths to image objects format expected by call_openai_optimized_s3
         image_objects = []
         for image_path in image_batch:
@@ -3316,7 +3291,6 @@ def process_image_batch(image_batch, prompt, batch_num):
         result, cost = call_openai_optimized_s3(image_objects, prompt)
         return result, cost
     except Exception as e:
-        print(f"    [!] Error in batch {batch_num}: {e}")
         return None, 0.0
 
 
