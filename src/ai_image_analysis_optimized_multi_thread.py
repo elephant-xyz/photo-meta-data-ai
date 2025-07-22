@@ -1184,6 +1184,7 @@ def generate_individual_object_files(batch_data, image_paths, output_dir, batch_
     print(f"    [→] Generating image files...")
     image_files = generate_image_json_files(image_paths, output_dir, batch_number)
     object_files["images"] = image_files
+    print(f"    [→] Generated {len(image_files)} image files")
 
     # Generate property-level object files
     property_objects = ["structure", "lot", "utility", "nearby_location"]
@@ -1344,7 +1345,13 @@ def generate_relationships_from_object_files(object_files, image_paths, property
     relationships = []
 
     # Get image CIDs from the generated image files (these are already clean filenames)
-    image_cids = object_files["images"]  # This is a dict: {image_cid -> filename}
+    image_cids = object_files.get("images", {})  # This is a dict: {image_cid -> filename}
+    
+    if not image_cids:
+        logger.warning(f"No image files found in object_files. Available keys: {list(object_files.keys())}")
+        return relationships
+
+    logger.info(f"Found {len(image_cids)} image CIDs for relationship generation")
 
     # Create property -> image relationships using image CIDs (which are filenames without .json)
     for image_cid in image_cids.keys():
