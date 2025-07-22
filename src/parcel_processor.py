@@ -61,8 +61,8 @@ class ParcelProcessor:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('logs/parcel-processor.log'),
-                logging.StreamHandler()  # Also log to console
+                logging.FileHandler('logs/parcel-processor.log')
+                # Removed StreamHandler to only log to files
             ]
         )
         self.logger = logging.getLogger(__name__)
@@ -338,8 +338,8 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/parcel-processor.log'),
-            logging.StreamHandler()
+            logging.FileHandler('logs/parcel-processor.log')
+            # Removed StreamHandler to only log to files
         ]
     )
     logger = logging.getLogger(__name__)

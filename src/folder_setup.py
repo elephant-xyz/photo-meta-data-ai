@@ -22,8 +22,8 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/folder-setup.log'),
-            logging.StreamHandler()  # Also log to console
+            logging.FileHandler('logs/folder-setup.log')
+            # Removed StreamHandler to only log to files
         ]
     )
     return logging.getLogger(__name__)

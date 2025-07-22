@@ -32,8 +32,8 @@ class BucketManager:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('logs/bucket-manager.log'),
-                logging.StreamHandler()  # Also log to console
+                logging.FileHandler('logs/bucket-manager.log')
+                # Removed StreamHandler to only log to files
             ]
         )
         self.logger = logging.getLogger(__name__)

@@ -35,8 +35,8 @@ class RekognitionCategorizer:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler(f'logs/photo-categorizer.log'),
-                logging.StreamHandler()  # Also log to console
+                logging.FileHandler(f'logs/photo-categorizer.log')
+                # Removed StreamHandler to only log to files
             ]
         )
         self.logger = logging.getLogger(__name__)

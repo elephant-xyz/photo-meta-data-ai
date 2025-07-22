@@ -33,8 +33,8 @@ class PropertyImagesUploader:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('logs/upload-to-s3.log'),
-                logging.StreamHandler()  # Also log to console
+                logging.FileHandler('logs/upload-to-s3.log')
+                # Removed StreamHandler to only log to files
             ]
         )
         self.logger = logging.getLogger(__name__)
@@ -227,8 +227,8 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/upload-to-s3.log'),
-            logging.StreamHandler()
+            logging.FileHandler('logs/upload-to-s3.log')
+            # Removed StreamHandler to only log to files
         ]
     )
     logger = logging.getLogger(__name__)
