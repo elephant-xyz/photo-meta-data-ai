@@ -407,7 +407,7 @@ def main():
     uploader = PropertyImagesUploader()
     uploader.authenticate_aws()
     logger.info("\n📤 Uploading all images to S3...")
-    upload_success = uploader.upload_all_properties(bucket_name, "images")
+    upload_success = uploader.upload_all_properties_from_seed(seed_data_path, bucket_name, "images")
     if not upload_success:
         logger.error("\n❌ Upload failed! Cannot proceed with categorization.")
         sys.exit(1)
