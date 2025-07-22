@@ -925,16 +925,19 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
     """Generate individual JSON files for each S3 image using the file schema from IPFS."""
     image_files = {}
     
+    # Create images subdirectory in output folder
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    
     # Fetch file schema from IPFS
     file_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["file"])
     if not file_schema:
-        print("    [!] Warning: Could not fetch file schema from IPFS, using default")
+        logger.warning("Could not fetch file schema from IPFS, using default")
         file_schema = {
             "type": "file",
             "properties": {
                 "filename": {"type": "string"},
-                "s3_key": {"type": "string"},
-                "s3_bucket": {"type": "string"},
+                "file_path": {"type": "string"},
                 "file_type": {"type": "string"},
                 "image_format": {"type": "string"}
             }
@@ -945,13 +948,23 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
         image_name = image_obj['name']
         image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
         
-        # Create image JSON using the file schema from IPFS
+        # Download image from S3 to output folder
+        image_dest_path = os.path.join(images_dir, image_name)
+        try:
+            s3_key = image_obj['key']
+            s3_client.download_file(S3_BUCKET_NAME, s3_key, image_dest_path)
+            logger.info(f"Downloaded image: {image_name} from S3 to {image_dest_path}")
+        except Exception as e:
+            logger.error(f"Failed to download image {image_name} from S3: {e}")
+            continue
+        
+        # Create image JSON using the file schema from IPFS with relative path
+        relative_image_path = os.path.join("images", image_name)
         image_data = {
             "type": "file",
             "properties": {
                 "filename": image_name,
-                "s3_key": image_obj['key'],
-                "s3_bucket": S3_BUCKET_NAME,
+                "file_path": relative_image_path,  # Use relative path
                 "file_type": "image",
                 "image_format": image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
             }
@@ -965,7 +978,7 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
             json.dump(image_data, f, indent=2)
         
         image_files[image_cid] = filename
-        print(f"    [✔] Saved: {filename}")
+        logger.info(f"Saved: {filename}")
     
     return image_files
 
@@ -973,6 +986,10 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
 def generate_image_json_files(image_paths, output_dir, batch_number):
     """Generate individual JSON files for each image using the file schema from IPFS."""
     image_files = {}
+    
+    # Create images subdirectory in output folder
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
     
     # Fetch file schema from IPFS
     file_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["file"])
@@ -993,12 +1010,23 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
         image_name = os.path.basename(image_path)
         image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
         
-        # Create image JSON using the file schema from IPFS
+        # Copy image to output folder
+        image_dest_path = os.path.join(images_dir, image_name)
+        try:
+            import shutil
+            shutil.copy2(image_path, image_dest_path)
+            logger.info(f"Copied image: {image_name} to {image_dest_path}")
+        except Exception as e:
+            logger.error(f"Failed to copy image {image_name}: {e}")
+            continue
+        
+        # Create image JSON using the file schema from IPFS with relative path
+        relative_image_path = os.path.join("images", image_name)
         image_data = {
             "type": "file",
             "properties": {
                 "filename": image_name,
-                "file_path": image_path,
+                "file_path": relative_image_path,  # Use relative path
                 "file_type": "image",
                 "image_format": image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
             }
@@ -1012,7 +1040,7 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
             json.dump(image_data, f, indent=2)
         
         image_files[image_cid] = filename
-        print(f"    [✔] Saved: {filename}")
+        logger.info(f"Saved: {filename}")
     
     return image_files
 
@@ -1030,7 +1058,7 @@ def generate_individual_object_files_s3(batch_data, image_objects, output_dir, b
     }
 
     # Generate image files first
-    print(f"    [→] Generating image files...")
+    logger.info(f"Generating image files...")
     image_files = generate_image_json_files_s3(image_objects, output_dir, batch_number)
     object_files["images"] = image_files
 
