@@ -789,7 +789,7 @@ def try_parse_json(text):
 
 
 def call_openai_optimized_s3(image_objects, prompt):
-    """Optimized OpenAI call for S3 images with retry logic and better error handling."""
+    """Optimized OpenAI call for local images with retry logic and better error handling."""
     global TOTAL_IMAGES_PROCESSED, TOTAL_PROMPT_TOKENS, TOTAL_COMPLETION_TOKENS, TOTAL_COST
 
     max_retries = 3
@@ -814,7 +814,15 @@ def call_openai_optimized_s3(image_objects, prompt):
             print(f"[DEBUG] Processing {len(image_objects[:10])} images for API call")
             for i, image_obj in enumerate(image_objects[:10]):
                 print(f"[DEBUG] Processing image {i+1}/{len(image_objects[:10])}: {image_obj['key']}")
-                image_b64 = optimize_s3_image(image_obj['key'])
+                
+                # Handle both local files and S3 files
+                if image_obj['key'].startswith('s3://') or '/' in image_obj['key']:
+                    # Local file path
+                    image_b64 = encode_image_original(image_obj['key'])
+                else:
+                    # S3 key
+                    image_b64 = optimize_s3_image(image_obj['key'])
+                
                 if image_b64:
                     print(f"[DEBUG] Successfully encoded image {i+1}")
                     messages[1]["content"].append({
@@ -2746,7 +2754,8 @@ def create_main_relationship_file(relationship_files, output_dir, property_id):
     
     # Group relationships by type
     for relationship_file in relationship_files:
-        relationship_type = relationship_file.get("type", "unknown")
+        # Get relationship type from properties.type field
+        relationship_type = relationship_file.get("properties", {}).get("type", "unknown")
         
         # Check if this relationship type exists in the schema
         if relationship_type in schema_relationships:
@@ -3294,7 +3303,17 @@ def process_image_batch(image_batch, prompt, batch_num):
     """Process a single batch of images with OpenAI API."""
     try:
         print(f"    [→] Processing batch {batch_num} ({len(image_batch)} images)")
-        result, cost = call_openai_optimized_s3(image_batch, prompt)
+        
+        # Convert image paths to image objects format expected by call_openai_optimized_s3
+        image_objects = []
+        for image_path in image_batch:
+            image_name = os.path.basename(image_path)
+            image_objects.append({
+                'key': image_path,  # For local files, use the path as key
+                'name': image_name
+            })
+        
+        result, cost = call_openai_optimized_s3(image_objects, prompt)
         return result, cost
     except Exception as e:
         print(f"    [!] Error in batch {batch_num}: {e}")
