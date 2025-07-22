@@ -412,7 +412,7 @@ def generate_smart_relationships_from_batch(batch_data, image_paths, property_ci
         image_cid = generate_placeholder_cid("image", f"{image_name.replace('.', '_')}")
         image_cids[i] = {"path": image_path, "name": image_name, "cid": image_cid}
         # Link each image to the property
-        relationships.append(create_relationship(property_cid, image_cid, "property_has_document_image"))
+        relationships.append(create_relationship(property_cid, image_cid, "property_has_file"))
 
     # Property-level relationships (create once per property, not per image)
     # These are shared across all images in the batch
@@ -509,7 +509,7 @@ def generate_relationships_per_image(extracted_data, image_name, property_cid, i
     image_cid = generate_placeholder_cid("image", f"{image_name.replace('.', '_')}_{image_index}")
 
     # Link image to property
-    relationships.append(create_relationship(property_cid, image_cid, "property_has_document_image"))
+    relationships.append(create_relationship(property_cid, image_cid, "property_has_file"))
 
     # Handle layouts found in this specific image
     layouts = extracted_data.get("layout", [])
@@ -1299,7 +1299,7 @@ def generate_relationships_from_object_files_s3(object_files, image_objects, pro
 
     # Create property -> image relationships using image CIDs (which are filenames without .json)
     for image_cid in image_cids.keys():
-        relationships.append(create_relationship(property_cid, image_cid, "property_has_document_image", relationship_schema))
+        relationships.append(create_relationship(property_cid, image_cid, "property_has_file", relationship_schema))
 
     # Property-level object relationships using filenames as CIDs
     # Only create relationships for new files, not updated ones
@@ -1348,7 +1348,7 @@ def generate_relationships_from_object_files(object_files, image_paths, property
 
     # Create property -> image relationships using image CIDs (which are filenames without .json)
     for image_cid in image_cids.keys():
-        relationships.append(create_relationship(property_cid, image_cid, "property_has_document_image"))
+        relationships.append(create_relationship(property_cid, image_cid, "property_has_file"))
 
     # Property-level object relationships using filenames as CIDs
     for obj_type, filename in object_files["property_objects"].items():
@@ -2026,7 +2026,7 @@ def generate_relationships_from_grouped_files_s3(grouped_files, image_objects, p
 
     # Create property -> image relationships using image CIDs (which are filenames without .json)
     for image_cid in image_cids.keys():
-        relationships.append(create_relationship(property_cid, image_cid, "property_has_document_image", relationship_schema))
+        relationships.append(create_relationship(property_cid, image_cid, "property_has_file", relationship_schema))
 
     # Property-level object relationships using grouped filenames as CIDs
     for obj_type, filename in grouped_files["property_objects"].items():
