@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from collections import defaultdict
 import time
 from datetime import datetime
+from dotenv import load_dotenv
 
 
 class ParcelProcessor:
@@ -22,8 +23,33 @@ class ParcelProcessor:
         self.s3_client = None
         self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
         
+        # Load environment variables from .env file
+        self.load_environment()
+        
         # Setup logging
         self.setup_logging()
+
+    def load_environment(self):
+        """Load environment variables from .env file"""
+        # Try to load from .env file
+        env_paths = [
+            '.env',
+            '/content/.env',
+            os.path.expanduser('~/.env')
+        ]
+        
+        env_loaded = False
+        for env_path in env_paths:
+            if os.path.exists(env_path):
+                load_dotenv(env_path)
+                print(f"✓ Loaded environment from {env_path}")
+                env_loaded = True
+                break
+        
+        if not env_loaded:
+            print("⚠️  No .env file found, using system environment variables")
+        
+        return env_loaded
 
     def setup_logging(self):
         """Setup logging configuration"""
