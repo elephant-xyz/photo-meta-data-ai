@@ -24,13 +24,13 @@ def setup_logging():
     # Create logs directory if it doesn't exist
     os.makedirs('logs', exist_ok=True)
     
-    # Configure logging
+    # Configure logging with both file and console output
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/ai-analyzer.log')
-            # Removed StreamHandler to only log to files
+            logging.FileHandler('logs/ai-analyzer.log'),
+            logging.StreamHandler()  # Add console output
         ]
     )
     return logging.getLogger(__name__)
@@ -2262,16 +2262,21 @@ def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_siz
     try:
         # Load seed data
         df = pd.read_csv(seed_data_path)
+        print(f"\n📊 Loaded {len(df)} records from seed data CSV")
         logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
         
         # Get all property IDs
         property_ids = df['parcel_id'].astype(str).tolist()
+        print(f"🏠 Processing {len(property_ids)} properties from local folders")
         logger.info(f"📁 Processing {len(property_ids)} properties from local folders")
         
         total_processed = 0
         total_images = 0
         
         for property_id in property_ids:
+            print(f"\n{'='*80}")
+            print(f"🏠 Processing Property: {property_id}")
+            print(f"{'='*80}")
             logger.info(f"\n{'='*80}")
             logger.info(f"Processing Property: {property_id}")
             logger.info(f"{'='*80}")
@@ -2279,6 +2284,7 @@ def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_siz
             # Check if local property folder exists
             local_property_path = os.path.join("images", property_id)
             if not os.path.exists(local_property_path):
+                print(f"⚠️  Local property folder not found: {local_property_path}")
                 logger.warning(f"⚠️  Local property folder not found: {local_property_path}")
                 continue
             
@@ -2290,13 +2296,16 @@ def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_siz
                     category_folders.append(item)
             
             if not category_folders:
+                print(f"⚠️  No category folders found for property {property_id}")
                 logger.warning(f"⚠️  No category folders found for property {property_id}")
                 continue
             
+            print(f"📁 Found {len(category_folders)} category folders for property {property_id}")
             logger.info(f"📁 Found {len(category_folders)} category folders for property {property_id}")
             
             # Process each category folder
             for category in category_folders:
+                print(f"\n🖼️  Processing category: {category}")
                 logger.info(f"\n🖼️  Processing category: {category}")
                 success = process_local_category_folder(
                     property_id, category, prompt, schemas, batch_size, max_workers
@@ -2308,10 +2317,15 @@ def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_siz
                     image_count = len([f for f in os.listdir(category_path) 
                                      if os.path.splitext(f)[1].lower() in {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}])
                     total_images += image_count
+                    print(f"✅ Successfully processed {image_count} images in {category}")
                     logger.info(f"✅ Successfully processed {image_count} images in {category}")
                 else:
+                    print(f"⚠️  Failed to process category {category}")
                     logger.warning(f"⚠️  Failed to process category {category}")
         
+        print(f"\n🎉 Processing completed!")
+        print(f"📊 Total properties processed: {total_processed}")
+        print(f"📊 Total images processed: {total_images}")
         logger.info(f"\n🎉 Processing completed!")
         logger.info(f"📊 Total properties processed: {total_processed}")
         logger.info(f"📊 Total images processed: {total_images}")
@@ -2319,6 +2333,7 @@ def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_siz
         return total_processed > 0
         
     except Exception as e:
+        print(f"❌ Error processing local properties: {e}")
         logger.error(f"❌ Error processing local properties: {e}")
         return False
 
@@ -2340,6 +2355,14 @@ def main():
     
     total_start = time.time()
 
+    print("🚀 Starting optimized real estate image processing with S3 and IPFS integration...")
+    print(f"🖼️  Image optimization: Max size {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]}, JPEG quality {JPEG_QUALITY}%")
+    print(f"🚀 Single call processing: All images processed in one API call per folder")
+    print(f"☁️  S3 Bucket: {S3_BUCKET_NAME}")
+    print(f"🌐 IPFS Schemas: {len(IPFS_SCHEMA_CIDS)} schemas + 1 relationship schema")
+    print(f"📁 Output Structure: All files go directly to output/property_id/ (no subfolders)")
+    print(f"🔄 Data Merging: Updates existing files instead of creating new ones")
+    print(f"🔗 Individual Relationships: Creates separate relationship files with IPFS format")
     logger.info("🚀 Starting optimized real estate image processing with S3 and IPFS integration...")
     logger.info(f"🖼️  Image optimization: Max size {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]}, JPEG quality {JPEG_QUALITY}%")
     logger.info(f"🚀 Single call processing: All images processed in one API call per folder")
@@ -2350,13 +2373,16 @@ def main():
     logger.info(f"🔗 Individual Relationships: Creates separate relationship files with IPFS format")
 
     # Load schemas from IPFS
+    print(f"\n[→] Loading schemas from IPFS...")
     logger.info(f"\n[→] Loading schemas from IPFS...")
     schemas = load_schemas_from_ipfs()
     
     if not schemas:
+        print("❌ Failed to load schemas from IPFS. Exiting.")
         logger.error("❌ Failed to load schemas from IPFS. Exiting.")
         return
     
+    print(f"✓ Successfully loaded {len(schemas)} schemas from IPFS")
     logger.info(f"✓ Successfully loaded {len(schemas)} schemas from IPFS")
 
     # Authenticate with AWS
@@ -2410,13 +2436,16 @@ def main():
     # Filter properties based on arguments
     if args.local_folders:
         # Process from local categorized folders
+        print("🖥️  Processing from local categorized folders...")
         logger.info("🖥️  Processing from local categorized folders...")
         prompt = load_optimized_json_schema_prompt(None, schemas)
         success = process_all_local_properties(seed_data_path, prompt, schemas, 
                                              batch_size=args.batch_size, max_workers=args.max_workers)
         if success:
+            print("🎉 Local folder processing completed successfully!")
             logger.info("🎉 Local folder processing completed successfully!")
         else:
+            print("❌ Local folder processing failed!")
             logger.error("❌ Local folder processing failed!")
         return
     elif args.property_id:
