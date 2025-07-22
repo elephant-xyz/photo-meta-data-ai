@@ -68,23 +68,27 @@ export AWS_DEFAULT_REGION='us-east-1'
 export S3_BUCKET_NAME='your-bucket-name'
 ```
 
-### Prepare Your Images
+### Prepare Your Data
 
-Create a folder structure like this:
+1. **Create a `seed.csv` file** with parcel IDs and addresses:
+```csv
+parcel_id,Address,method,headers,url,multiValueQueryString,body,json,source_identifier,County
+30434108090030050,"1605 S US HIGHWAY 1 3E,PALM BEACH GARDENS","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["30434108090030050"]},,,30434108090030050,palm beach
+52434205310037080,"2558 GARDENS PKWY,JUPITER","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["52434205310037080"]},,,52434205310037080,palm beach
+```
+
+2. **Create a folder structure** with parcel IDs as folder names:
 ```
 images/
-├── property-123/
+├── 30434108090030050/
 │   ├── kitchen1.jpg
 │   ├── bedroom1.jpg
 │   ├── bathroom1.jpg
 │   └── living1.jpg
-├── property-456/
+├── 52434205310037080/
 │   ├── exterior1.jpg
 │   ├── garage1.jpg
 │   └── pool1.jpg
-└── property-789/
-    ├── office1.jpg
-    └── dining1.jpg
 ```
 
 ### Run the Categorizer
@@ -94,7 +98,7 @@ images/
 photo-categorizer
 
 # Or run the script directly
-python src/rek.py
+python src/rekognition.py
 ```
 
 ### Run the AI Analyzer
@@ -109,6 +113,41 @@ ai-analyzer --property-id 30434108090030050
 # Advanced usage
 ai-analyzer --all-properties --batch-size 10 --max-workers 5
 ```
+
+### Run the Parcel Processor
+
+```bash
+# Process parcels using CSV data
+parcel-processor
+```
+
+This tool reads from:
+- `upload_results.csv` - Contains property CIDs and data CIDs
+- `seed.csv` - Contains parcel IDs and addresses
+
+See [PARCEL_PROCESSOR_USAGE.md](PARCEL_PROCESSOR_USAGE.md) for detailed usage.
+
+### Run the Bucket Manager
+
+```bash
+# Create bucket if it doesn't exist
+bucket-manager --create
+
+# Show bucket information
+bucket-manager --info
+
+# List all available buckets
+bucket-manager --list
+
+# Create bucket with custom name and region
+bucket-manager --create --bucket-name my-custom-bucket --region us-west-2
+```
+
+The bucket manager automatically configures:
+- Versioning
+- Encryption
+- Private access
+- Security policies
 
 The tool will give you three options:
 1. **Upload images from local folder to S3** - Only upload, don't categorize
@@ -181,22 +220,24 @@ your-bucket-name/
 - `AWS_ACCESS_KEY_ID`: Your AWS access key
 - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
 - `AWS_DEFAULT_REGION`: AWS region (default: us-east-1)
-- `S3_BUCKET_NAME`: Your S3 bucket name (default: photo-metadata-ai)
+- `S3_BUCKET_NAME`: Your S3 bucket name (default: photo-metadata-ai) - **Automatically created if it doesn't exist**
 - `OPENAI_API_KEY`: Your OpenAI API key (for AI analyzer)
 
 ### Local Folder Structure
 
-The tool expects images to be stored locally with this structure:
+The tool expects images to be stored locally with parcel IDs as folder names:
 ```
 images/
-├── property-id-1/
+├── 30434108090030050/
 │   ├── image1.jpg
 │   ├── image2.jpg
 │   └── ...
-└── property-id-2/
+└── 52434205310037080/
     ├── image1.jpg
     └── ...
 ```
+
+**Note**: All tools now read from `seed.csv` to determine which properties to process.
 
 ### S3 Bucket
 

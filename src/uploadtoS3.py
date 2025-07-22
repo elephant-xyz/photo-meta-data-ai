@@ -2,11 +2,13 @@
 """
 Script to upload property images from local folder to AWS S3
 Handles folder structure: images/PROPERTY_ID/<all images>
-Automatically uploads all properties to photo-metadata-ai bucket
+Automatically uploads all properties listed in seed.csv to photo-metadata-ai bucket
 """
 
 import os
 import sys
+import logging
+import pandas as pd
 from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -17,6 +19,25 @@ class PropertyImagesUploader:
     def __init__(self):
         self.s3_client = None
         self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
+        
+        # Setup logging
+        self.setup_logging()
+
+    def setup_logging(self):
+        """Setup logging configuration"""
+        # Create logs directory if it doesn't exist
+        os.makedirs('logs', exist_ok=True)
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler('logs/upload-to-s3.log'),
+                logging.StreamHandler()  # Also log to console
+            ]
+        )
+        self.logger = logging.getLogger(__name__)
 
     def authenticate_aws(self):
         """Authenticate with AWS S3 using environment variables"""
@@ -26,11 +47,11 @@ class PropertyImagesUploader:
             aws_region = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
 
             if not aws_access_key or not aws_secret_key:
-                print("Error: AWS credentials not found in environment variables!")
-                print("Please set the following environment variables:")
-                print("- AWS_ACCESS_KEY_ID")
-                print("- AWS_SECRET_ACCESS_KEY")
-                print("- AWS_DEFAULT_REGION (optional, defaults to us-east-1)")
+                self.logger.error("Error: AWS credentials not found in environment variables!")
+                self.logger.error("Please set the following environment variables:")
+                self.logger.error("- AWS_ACCESS_KEY_ID")
+                self.logger.error("- AWS_SECRET_ACCESS_KEY")
+                self.logger.error("- AWS_DEFAULT_REGION (optional, defaults to us-east-1)")
                 sys.exit(1)
 
             self.s3_client = boto3.client(
@@ -42,14 +63,35 @@ class PropertyImagesUploader:
 
             # Test connection
             self.s3_client.list_buckets()
-            print("✓ AWS S3 authentication successful")
+            self.logger.info("✓ AWS S3 authentication successful")
 
         except NoCredentialsError:
-            print("Error: AWS credentials not found!")
+            self.logger.error("Error: AWS credentials not found!")
             sys.exit(1)
         except ClientError as e:
-            print(f"Error: AWS authentication failed - {e}")
+            self.logger.error(f"Error: AWS authentication failed - {e}")
             sys.exit(1)
+
+    def load_seed_data(self, seed_data_path):
+        """Load seed data CSV to get parcel IDs and addresses"""
+        try:
+            df = pd.read_csv(seed_data_path)
+            self.logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
+            
+            # Create mapping from parcel_id to address
+            parcel_mapping = {}
+            for _, row in df.iterrows():
+                parcel_id = str(row['parcel_id'])
+                address = row['Address']
+                parcel_mapping[parcel_id] = address
+                self.logger.debug(f"Mapped parcel {parcel_id} -> {address}")
+            
+            self.logger.info(f"✓ Created {len(parcel_mapping)} parcel mappings")
+            return parcel_mapping
+            
+        except Exception as e:
+            self.logger.error(f"Error loading seed data CSV: {e}")
+            return {}
 
     def is_image_file(self, filename):
         """Check if file is an image based on extension"""
@@ -78,113 +120,81 @@ class PropertyImagesUploader:
             return True, file_size
 
         except Exception as e:
-            print(f"Error uploading {file_path}: {e}")
+            self.logger.error(f"Error uploading {file_path}: {e}")
             return False, 0
 
     def upload_property_images(self, property_id, s3_bucket=None, images_dir="images"):
+        """Upload all images for a specific property"""
         if s3_bucket is None:
             s3_bucket = self.bucket_name
-        """Upload all images for a specific property"""
-        print(f"Starting upload for property ID: {property_id}")
 
-        # Define the property folder path
         property_folder = Path(images_dir) / property_id
 
-        # Check if property folder exists
         if not property_folder.exists():
-            print(f"Error: Property folder '{property_folder}' not found")
+            self.logger.warning(f"Property folder not found: {property_folder}")
             return False
-
-        if not property_folder.is_dir():
-            print(f"Error: '{property_folder}' is not a directory")
-            return False
-
-        print(f"✓ Found property folder: {property_folder}")
 
         # Get all image files in the property folder
-        image_files = []
-        for file_path in property_folder.iterdir():
-            if file_path.is_file() and self.is_image_file(file_path.name):
-                image_files.append(file_path)
+        image_files = [f for f in property_folder.iterdir() if f.is_file() and self.is_image_file(f.name)]
 
         if not image_files:
-            print("No image files found in property folder")
+            self.logger.warning(f"No image files found in {property_folder}")
             return False
 
-        print(f"✓ Found {len(image_files)} image files to upload")
+        self.logger.info(f"Found {len(image_files)} images for property {property_id}")
 
-        # Set up S3 prefix using folder name (property_id)
-        s3_prefix = f"{property_id}/"
-
-        # Upload each file
-        successful_uploads = 0
-        failed_uploads = 0
+        uploaded_count = 0
         total_size = 0
 
-        for i, file_path in enumerate(image_files, 1):
-            file_name = file_path.name
-            file_size = file_path.stat().st_size
+        for image_file in image_files:
+            # Create S3 key: property_id/image_name
+            s3_key = f"{property_id}/{image_file.name}"
 
-            print(f"\n[{i}/{len(image_files)}] Processing: {file_name}")
-            print(f"Size: {file_size:,} bytes ({file_size / 1024 / 1024:.2f} MB)")
-
-            # Upload to S3
-            s3_key = f"{s3_prefix}{file_name}"
-            print(f"  Uploading to S3: {s3_key}")
-
-            success, uploaded_size = self.upload_file_to_s3(file_path, s3_bucket, s3_key)
+            success, file_size = self.upload_file_to_s3(image_file, s3_bucket, s3_key)
 
             if success:
-                print(f"  ✓ Successfully uploaded {file_name}")
-                successful_uploads += 1
-                total_size += uploaded_size
+                uploaded_count += 1
+                total_size += file_size
+                self.logger.info(f"✓ Uploaded {image_file.name} ({file_size} bytes)")
             else:
-                print(f"  ❌ Failed to upload {file_name}")
-                failed_uploads += 1
+                self.logger.error(f"❌ Failed to upload {image_file.name}")
 
-        # Summary
-        print(f"\n{'=' * 50}")
-        print(f"Upload Summary for Property {property_id}")
-        print(f"{'=' * 50}")
-        print(f"Total files found: {len(image_files)}")
-        print(f"Successful uploads: {successful_uploads}")
-        print(f"Failed uploads: {failed_uploads}")
-        print(f"Total size uploaded: {total_size:,} bytes ({total_size / 1024 / 1024:.2f} MB)")
-        print(f"S3 location: s3://{s3_bucket}/{s3_prefix}")
+        self.logger.info(f"Property {property_id}: {uploaded_count}/{len(image_files)} images uploaded ({total_size} bytes total)")
 
-        return successful_uploads > 0
+        return uploaded_count > 0
 
-    def upload_all_properties(self, s3_bucket=None, images_dir="images"):
+    def upload_all_properties_from_seed(self, seed_data_path, s3_bucket=None, images_dir="images"):
+        """Upload images for all properties listed in seed.csv"""
         if s3_bucket is None:
             s3_bucket = self.bucket_name
-        """Upload images for all properties in the images directory"""
-        print("Starting upload for all properties...")
+
+        self.logger.info("Starting upload for all properties from seed.csv...")
+
+        # Load seed data
+        parcel_mapping = self.load_seed_data(seed_data_path)
+        
+        if not parcel_mapping:
+            self.logger.error("Failed to load seed data. Exiting.")
+            return False
 
         images_path = Path(images_dir)
 
         # Check if images directory exists
         if not images_path.exists():
-            print(f"Error: Images directory '{images_dir}' not found")
+            self.logger.error(f"Error: Images directory '{images_dir}' not found")
             return False
 
-        # Get all property folders
-        property_folders = [d for d in images_path.iterdir() if d.is_dir()]
-
-        if not property_folders:
-            print("No property folders found in images directory")
-            return False
-
-        print(f"✓ Found {len(property_folders)} property folders")
+        self.logger.info(f"✓ Found {len(parcel_mapping)} properties in seed.csv")
 
         # Upload each property
         total_successful = 0
         total_failed = 0
 
-        for i, property_folder in enumerate(property_folders, 1):
-            property_id = property_folder.name
-            print(f"\n{'=' * 60}")
-            print(f"Processing Property {i}/{len(property_folders)}: {property_id}")
-            print(f"{'=' * 60}")
+        for i, (property_id, address) in enumerate(parcel_mapping.items(), 1):
+            self.logger.info(f"\n{'=' * 60}")
+            self.logger.info(f"Processing Property {i}/{len(parcel_mapping)}: {property_id}")
+            self.logger.info(f"Address: {address}")
+            self.logger.info(f"{'=' * 60}")
 
             success = self.upload_property_images(property_id, s3_bucket, images_dir)
 
@@ -194,49 +204,72 @@ class PropertyImagesUploader:
                 total_failed += 1
 
         # Final summary
-        print(f"\n{'=' * 60}")
-        print(f"FINAL SUMMARY")
-        print(f"{'=' * 60}")
-        print(f"Total properties processed: {len(property_folders)}")
-        print(f"Successful property uploads: {total_successful}")
-        print(f"Failed property uploads: {total_failed}")
+        self.logger.info(f"\n{'=' * 60}")
+        self.logger.info(f"FINAL SUMMARY")
+        self.logger.info(f"{'=' * 60}")
+        self.logger.info(f"Total properties processed: {len(parcel_mapping)}")
+        self.logger.info(f"Successful property uploads: {total_successful}")
+        self.logger.info(f"Failed property uploads: {total_failed}")
 
         return total_successful > 0
 
 
 def main():
-    print("Property Images Local to S3 Upload Script")
-    print("=" * 45)
+    # Setup logging for main function
+    os.makedirs('logs', exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('logs/upload-to-s3.log'),
+            logging.StreamHandler()
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Property Images Local to S3 Upload Script")
+    logger.info("=" * 45)
     bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
-    print(f"Target S3 Bucket: {bucket_name}")
-    print("Mode: Upload all properties automatically")
-    print("=" * 45)
+    logger.info(f"Target S3 Bucket: {bucket_name}")
+    logger.info("Mode: Upload all properties from seed.csv automatically")
+    logger.info("=" * 45)
+
+    # Check for required files
+    seed_data_path = "seed.csv"
+    
+    if not os.path.exists(seed_data_path):
+        logger.error(f"❌ {seed_data_path} not found!")
+        logger.error("Please provide seed.csv with parcel_id,Address columns")
+        sys.exit(1)
+    
+    logger.info(f"✓ Found {seed_data_path}")
 
     # Initialize uploader
     uploader = PropertyImagesUploader()
 
     # Authenticate with AWS
-    print("\n1. Authenticating with AWS S3...")
+    logger.info("\n1. Authenticating with AWS S3...")
     uploader.authenticate_aws()
 
     # Configuration
     s3_bucket = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
     images_dir = "images"
 
-    print(f"\n2. Configuration:")
-    print(f"   S3 Bucket: {s3_bucket}")
-    print(f"   Images Directory: {images_dir}")
-    print(f"   S3 Prefix: [property_id]/")
+    logger.info(f"\n2. Configuration:")
+    logger.info(f"   S3 Bucket: {s3_bucket}")
+    logger.info(f"   Images Directory: {images_dir}")
+    logger.info(f"   Seed Data: {seed_data_path}")
+    logger.info(f"   S3 Prefix: [property_id]/")
 
-    print("\n3. Starting upload...")
+    logger.info("\n3. Starting upload...")
 
-    # Upload all properties
-    success = uploader.upload_all_properties(s3_bucket, images_dir)
+    # Upload all properties from seed.csv
+    success = uploader.upload_all_properties_from_seed(seed_data_path, s3_bucket, images_dir)
 
     if success:
-        print("\n🎉 Upload completed successfully!")
+        logger.info("\n🎉 Upload completed successfully!")
     else:
-        print("\n❌ Upload failed!")
+        logger.error("\n❌ Upload failed!")
         sys.exit(1)
 
 

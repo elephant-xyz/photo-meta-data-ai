@@ -19,8 +19,23 @@ import tempfile
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+def setup_logging():
+    """Setup logging configuration"""
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('logs/ai-analyzer.log'),
+            logging.StreamHandler()  # Also log to console
+        ]
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging()
 
 # --- CONFIG ---
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -2180,42 +2195,43 @@ def process_property_row(address, folder_path, prompt, executor=None):
 
 def print_final_statistics():
     """Print comprehensive final statistics."""
-    print("\n" + "=" * 60)
-    print("📊 FINAL PROCESSING STATISTICS")
-    print("=" * 60)
-    print(f"🖼️  Total Images Processed: {TOTAL_IMAGES_PROCESSED:,}")
-    print(f"🔤 Total Prompt Tokens: {TOTAL_PROMPT_TOKENS:,}")
-    print(f"🔤 Total Completion Tokens: {TOTAL_COMPLETION_TOKENS:,}")
-    print(f"🔤 Total Tokens: {TOTAL_PROMPT_TOKENS + TOTAL_COMPLETION_TOKENS:,}")
-    print(f"💰 Total Cost: ${TOTAL_COST:.4f}")
+    logger.info("\n" + "=" * 60)
+    logger.info("📊 FINAL PROCESSING STATISTICS")
+    logger.info("=" * 60)
+    logger.info(f"🖼️  Total Images Processed: {TOTAL_IMAGES_PROCESSED:,}")
+    logger.info(f"🔤 Total Prompt Tokens: {TOTAL_PROMPT_TOKENS:,}")
+    logger.info(f"🔤 Total Completion Tokens: {TOTAL_COMPLETION_TOKENS:,}")
+    logger.info(f"🔤 Total Tokens: {TOTAL_PROMPT_TOKENS + TOTAL_COMPLETION_TOKENS:,}")
+    logger.info(f"💰 Total Cost: ${TOTAL_COST:.4f}")
     
     if TOTAL_IMAGES_PROCESSED > 0:
-        print(f"📈 Average Cost per Image: ${TOTAL_COST / TOTAL_IMAGES_PROCESSED:.4f}")
-        print(f"📈 Average Tokens per Image: {(TOTAL_PROMPT_TOKENS + TOTAL_COMPLETION_TOKENS) / TOTAL_IMAGES_PROCESSED:.1f}")
+        logger.info(f"📈 Average Cost per Image: ${TOTAL_COST / TOTAL_IMAGES_PROCESSED:.4f}")
+        logger.info(f"📈 Average Tokens per Image: {(TOTAL_PROMPT_TOKENS + TOTAL_COMPLETION_TOKENS) / TOTAL_IMAGES_PROCESSED:.1f}")
     else:
-        print("📈 Average Cost per Image: N/A (no images processed)")
-        print("📈 Average Tokens per Image: N/A (no images processed)")
+        logger.info("📈 Average Cost per Image: N/A (no images processed)")
+        logger.info("📈 Average Tokens per Image: N/A (no images processed)")
 
     if TOTAL_IMAGES_PROCESSED > 0:
         original_size_estimate = TOTAL_IMAGES_PROCESSED * 2048 * 2048 * 3
         optimized_size_estimate = TOTAL_IMAGES_PROCESSED * 1024 * 1024 * 3
         size_reduction_percent = ((original_size_estimate - optimized_size_estimate) / original_size_estimate) * 100
-        print(f"🗜️  Estimated Image Size Reduction: {size_reduction_percent:.1f}%")
+        logger.info(f"🗜️  Estimated Image Size Reduction: {size_reduction_percent:.1f}%")
     else:
-        print("🗜️  Estimated Image Size Reduction: N/A (no images processed)")
+        logger.info("🗜️  Estimated Image Size Reduction: N/A (no images processed)")
     
-    print(f"🗜️  Max Image Resolution: {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]} (JPEG Quality: {JPEG_QUALITY}%)")
-    print("=" * 60)
+    logger.info(f"🗜️  Max Image Resolution: {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]} (JPEG Quality: {JPEG_QUALITY}%)")
+    logger.info("=" * 60)
 
 
 def main():
     import argparse
     import sys
+    import pandas as pd
     
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='AI Image Analysis for Real Estate Properties')
     parser.add_argument('--property-id', type=str, help='Specific property ID to process (optional)')
-    parser.add_argument('--all-properties', action='store_true', help='Process all properties in S3')
+    parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
     parser.add_argument('--batch-size', type=int, default=5, help='Batch size for processing (default: 5)')
     parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
@@ -2224,82 +2240,104 @@ def main():
     
     total_start = time.time()
 
-    print("🚀 Starting optimized real estate image processing with S3 and IPFS integration...")
-    print(f"🖼️  Image optimization: Max size {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]}, JPEG quality {JPEG_QUALITY}%")
-    print(f"🚀 Single call processing: All images processed in one API call per folder")
-    print(f"☁️  S3 Bucket: {S3_BUCKET_NAME}")
-    print(f"🌐 IPFS Schemas: {len(IPFS_SCHEMA_CIDS)} schemas + 1 relationship schema")
-    print(f"📁 Output Structure: All files go directly to output/property_id/ (no subfolders)")
-    print(f"🔄 Data Merging: Updates existing files instead of creating new ones")
-    print(f"🔗 Individual Relationships: Creates separate relationship files with IPFS format")
+    logger.info("🚀 Starting optimized real estate image processing with S3 and IPFS integration...")
+    logger.info(f"🖼️  Image optimization: Max size {MAX_IMAGE_SIZE[0]}x{MAX_IMAGE_SIZE[1]}, JPEG quality {JPEG_QUALITY}%")
+    logger.info(f"🚀 Single call processing: All images processed in one API call per folder")
+    logger.info(f"☁️  S3 Bucket: {S3_BUCKET_NAME}")
+    logger.info(f"🌐 IPFS Schemas: {len(IPFS_SCHEMA_CIDS)} schemas + 1 relationship schema")
+    logger.info(f"📁 Output Structure: All files go directly to output/property_id/ (no subfolders)")
+    logger.info(f"🔄 Data Merging: Updates existing files instead of creating new ones")
+    logger.info(f"🔗 Individual Relationships: Creates separate relationship files with IPFS format")
 
     # Load schemas from IPFS
-    print(f"\n[→] Loading schemas from IPFS...")
+    logger.info(f"\n[→] Loading schemas from IPFS...")
     schemas = load_schemas_from_ipfs()
     
     if not schemas:
-        print("❌ Failed to load schemas from IPFS. Exiting.")
+        logger.error("❌ Failed to load schemas from IPFS. Exiting.")
         return
     
-    print(f"✓ Successfully loaded {len(schemas)} schemas from IPFS")
+    logger.info(f"✓ Successfully loaded {len(schemas)} schemas from IPFS")
 
     # Authenticate with AWS
     if not authenticate_aws():
-        print("❌ Failed to authenticate with AWS. Exiting.")
+        logger.error("❌ Failed to authenticate with AWS. Exiting.")
         return
 
-    # Get all properties from S3
-    print(f"\n[→] Listing all properties in S3 bucket {S3_BUCKET_NAME}...")
+    # Ensure bucket exists
+    logger.info(f"\n[→] Ensuring S3 bucket {S3_BUCKET_NAME} exists...")
+    from .bucket_manager import BucketManager
+    bucket_manager = BucketManager()
+    bucket_manager.authenticate_aws()
+    bucket_success = bucket_manager.ensure_bucket_exists(S3_BUCKET_NAME)
+    if not bucket_success:
+        logger.error("❌ Bucket setup failed! Cannot proceed.")
+        return
+    logger.info("✓ Bucket is ready!")
+
+    # Load properties from seed.csv
+    seed_data_path = "seed.csv"
     
-    # First, let's see what's actually in the bucket
-    try:
-        response = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, MaxKeys=10)
-        print(f"    [DEBUG] Sample objects in bucket:")
-        for obj in response.get('Contents', []):
-            print(f"    [DEBUG] - {obj['Key']}")
-    except Exception as e:
-        print(f"    [DEBUG] Error listing bucket contents: {e}")
-    
-    properties = list_s3_property_folders()
-    
-    if not properties:
-        print("❌ No properties found in S3 bucket. Make sure you have run the photo-categorizer first to upload and categorize images.")
-        print("   Expected structure: s3://bucket-name/property-id/category/image.jpg")
+    if not os.path.exists(seed_data_path):
+        logger.error(f"❌ {seed_data_path} not found!")
+        logger.error("Please provide seed.csv with parcel_id,Address columns")
         return
     
-    print(f"📁 Found {len(properties)} properties: {', '.join(properties)}")
+    logger.info(f"✓ Found {seed_data_path}")
+    
+    # Load seed data to get property IDs
+    try:
+        df = pd.read_csv(seed_data_path)
+        logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
+        
+        properties = []
+        for _, row in df.iterrows():
+            parcel_id = str(row['parcel_id'])
+            properties.append(parcel_id)
+        
+        logger.info(f"✓ Created {len(properties)} property mappings from seed.csv")
+        
+    except Exception as e:
+        logger.error(f"Error loading seed data CSV: {e}")
+        return
+    
+    if not properties:
+        logger.error("❌ No properties found in seed.csv. Please ensure the file contains parcel_id and Address columns.")
+        return
+    
+    logger.info(f"📁 Found {len(properties)} properties from seed.csv: {', '.join(properties)}")
 
     # Filter properties based on arguments
     if args.property_id:
         if args.property_id not in properties:
-            print(f"❌ Property {args.property_id} not found in S3 bucket.")
+            logger.error(f"❌ Property {args.property_id} not found in seed.csv.")
             return
         properties_to_process = [args.property_id]
     elif args.all_properties:
         properties_to_process = properties
     else:
-        print("❌ Please specify either --property-id or --all-properties")
+        logger.error("❌ Please specify either --property-id or --all-properties")
         return
 
-    print(f"🎯 Processing {len(properties_to_process)} properties: {', '.join(properties_to_process)}")
+    logger.info(f"🎯 Processing {len(properties_to_process)} properties: {', '.join(properties_to_process)}")
 
     # visual_tags removed - no longer needed
     
     # Process each property
     total_cost = 0.0
     for property_id in properties_to_process:
-        print(f"\n{'='*80}")
-        print(f"🏠 Processing Property: {property_id}")
-        print(f"{'='*80}")
+        logger.info(f"\n{'='*80}")
+        logger.info(f"🏠 Processing Property: {property_id}")
+        logger.info(f"{'='*80}")
         
         # List all category folders for this property
         categories = list_s3_subfolders_for_property(property_id)
         
         if not categories:
-            print(f"⚠️  No category folders found for property {property_id}, skipping...")
+            logger.warning(f"⚠️  No category folders found for property {property_id}, skipping...")
             continue
         
-        print(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
+        logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
         
         # Process each category folder
         property_cost = 0.0
@@ -2307,20 +2345,20 @@ def main():
             # Create category-specific prompt with categorization instructions and IPFS schemas
             prompt = load_optimized_json_schema_prompt(category, schemas)
             
-            print(f"\n{'='*60}")
-            print(f"🏠 Processing Category: {category}")
-            print(f"{'='*60}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"🏠 Processing Category: {category}")
+            logger.info(f"{'='*60}")
             
             cost = process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas, 
                                                       batch_size=args.batch_size, max_workers=args.max_workers)
             property_cost += cost
         
         total_cost += property_cost
-        print(f"💰 Property {property_id} cost: ${property_cost:.4f}")
+        logger.info(f"💰 Property {property_id} cost: ${property_cost:.4f}")
 
     total_elapsed = time.time() - total_start
-    print(f"\n✅ All properties processed in {total_elapsed:.1f} seconds")
-    print(f"💰 Total cost: ${total_cost:.4f}")
+    logger.info(f"\n✅ All properties processed in {total_elapsed:.1f} seconds")
+    logger.info(f"💰 Total cost: ${total_cost:.4f}")
 
     print_final_statistics()
 

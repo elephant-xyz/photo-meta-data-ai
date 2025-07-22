@@ -24,8 +24,10 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "photo-categorizer=src.rek:main",
+            "photo-categorizer=src.rekognition:main",
             "ai-analyzer=src.ai_analyzer:main_cli",
+            "parcel-processor=src.parcel_processor:main",
+            "bucket-manager=src.bucket_manager:main",
         ],
     },
     classifiers=[
