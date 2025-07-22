@@ -3,7 +3,6 @@ import json
 import base64
 import pandas as pd
 import time
-import pdfplumber
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from openai import OpenAI
 from datetime import datetime
