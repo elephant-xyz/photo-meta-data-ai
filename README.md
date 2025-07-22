@@ -68,6 +68,16 @@ export AWS_DEFAULT_REGION='us-east-1'
 export S3_BUCKET_NAME='your-bucket-name'
 ```
 
+### Recent Improvements
+
+**Timeout and Performance Fixes:**
+- ✅ Process 10 images at once in single API calls (no parallel processing)
+- ✅ Increased timeout from 120s to 600s maximum per API call
+- ✅ Added 30-minute overall timeout for entire processing
+- ✅ Better error handling to continue processing even if API calls fail
+- ✅ Improved retry logic with exponential backoff
+- ✅ All logs now go to files only (no console output)
+
 ### Prepare Your Data
 
 1. **Create a `seed.csv` file** with parcel IDs and addresses:

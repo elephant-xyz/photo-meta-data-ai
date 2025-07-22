@@ -829,7 +829,7 @@ def call_openai_optimized_s3(image_objects, prompt):
 
             # Calculate dynamic timeout based on batch size
             batch_size = len(image_objects[:10])
-            dynamic_timeout = min(120, 30 + (batch_size * 15))  # 30s base + 15s per image, max 120s
+            dynamic_timeout = min(600, 120 + (batch_size * 30))  # 120s base + 30s per image, max 600s
             
             try:
                 response = client.chat.completions.create(
@@ -2469,36 +2469,54 @@ def main():
     
     # Process each property from S3
     total_cost = 0.0
-    for property_id in properties_to_process:
-        logger.info(f"\n{'='*80}")
-        logger.info(f"🏠 Processing Property: {property_id}")
-        logger.info(f"{'='*80}")
-        
-        # List all category folders for this property
-        categories = list_s3_subfolders_for_property(property_id)
-        
-        if not categories:
-            logger.warning(f"⚠️  No category folders found for property {property_id}, skipping...")
-            continue
-        
-        logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
-        
-        # Process each category folder
-        property_cost = 0.0
-        for category in categories:
-            # Create category-specific prompt with categorization instructions and IPFS schemas
-            prompt = load_optimized_json_schema_prompt(category, schemas)
+    
+    # Set a timeout for the entire processing (30 minutes)
+    import signal
+    def timeout_handler(signum, frame):
+        logger.error("⏰ Processing timeout reached (30 minutes). Stopping...")
+        raise TimeoutError("Processing timeout")
+    
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(1800)  # 30 minutes timeout
+    
+    try:
+        for property_id in properties_to_process:
+            logger.info(f"\n{'='*80}")
+            logger.info(f"🏠 Processing Property: {property_id}")
+            logger.info(f"{'='*80}")
             
-            logger.info(f"\n{'='*60}")
-            logger.info(f"🏠 Processing Category: {category}")
-            logger.info(f"{'='*60}")
+            # List all category folders for this property
+            categories = list_s3_subfolders_for_property(property_id)
             
-            cost = process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas, 
-                                                      batch_size=args.batch_size, max_workers=args.max_workers)
-            property_cost += cost
-        
-        total_cost += property_cost
-        logger.info(f"💰 Property {property_id} cost: ${property_cost:.4f}")
+            if not categories:
+                logger.warning(f"⚠️  No category folders found for property {property_id}, skipping...")
+                continue
+            
+            logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
+            
+            # Process each category folder
+            property_cost = 0.0
+            for category in categories:
+                # Create category-specific prompt with categorization instructions and IPFS schemas
+                prompt = load_optimized_json_schema_prompt(category, schemas)
+                
+                logger.info(f"\n{'='*60}")
+                logger.info(f"🏠 Processing Category: {category}")
+                logger.info(f"{'='*60}")
+                
+                cost = process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas, 
+                                                          batch_size=args.batch_size, max_workers=args.max_workers)
+                property_cost += cost
+            
+            total_cost += property_cost
+            logger.info(f"💰 Property {property_id} cost: ${property_cost:.4f}")
+
+    except TimeoutError:
+        logger.error("⏰ Processing timed out. Some properties may not have been processed.")
+    except Exception as e:
+        logger.error(f"❌ Unexpected error during processing: {e}")
+    finally:
+        signal.alarm(0)  # Cancel the alarm
 
     total_elapsed = time.time() - total_start
     logger.info(f"\n✅ All properties processed in {total_elapsed:.1f} seconds")
@@ -3041,7 +3059,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=1):
     """Process images from local categorized folders"""
     try:
         # Local folder path: images/property_id/category/
@@ -3066,25 +3084,30 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         
         logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
         
-        # Process images in batches
-        batches = [image_files[i:i + batch_size] for i in range(0, len(image_files), batch_size)]
+        # Process all images in a single batch for efficiency
+        logger.info(f"🔄 Processing all {len(image_files)} images in single batch")
         
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = []
+        batch_results = []
+        try:
+            # Convert image paths to image objects format
+            image_objects = []
+            for image_path in image_files:
+                image_name = os.path.basename(image_path)
+                image_objects.append({
+                    'key': image_path,
+                    'name': image_name
+                })
             
-            for batch_num, batch in enumerate(batches, 1):
-                future = executor.submit(process_image_batch, batch, prompt, batch_num)
-                futures.append(future)
-            
-            # Wait for all batches to complete
-            batch_results = []
-            for future in as_completed(futures):
-                try:
-                    result = future.result()
-                    if result:
-                        batch_results.append(result)
-                except Exception as e:
-                    logger.error(f"❌ Batch processing failed: {e}")
+            # Process all images in one API call
+            result, cost = call_openai_optimized_s3(image_objects, prompt)
+            if result:
+                batch_results.append(result)
+                logger.info(f"✅ Single batch completed successfully with {len(image_files)} images")
+            else:
+                logger.error(f"❌ Single batch failed")
+        except Exception as e:
+            logger.error(f"❌ Single batch failed with error: {e}")
+            logger.info(f"🔄 Continuing with fallback processing...")
         
         if batch_results:
             # Merge all batch results
@@ -3115,7 +3138,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         logger.error(f"❌ Error processing local folder {local_folder_path}: {e}")
         return False
 
-def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
+def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=10, max_workers=1):
     """Process a single S3 category folder with true multi-threading and intelligent layout merging."""
     start_time = time.time()
     
@@ -3134,34 +3157,24 @@ def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=N
     print(f"[+] Output directory: {output_dir}")
     print(f"[+] Two-phase processing: {batch_size} images per batch, {max_workers} workers")
 
-    # Split images into smaller batches
-    batches = [image_objects[i:i + batch_size] for i in range(0, len(image_objects), batch_size)]
-    print(f"[+] Created {len(batches)} batches of {batch_size} images each")
-
-    # Phase 1: Process batches in parallel
+    # Process all images in a single batch for efficiency
+    print(f"[+] Processing all {len(image_objects)} images in single batch")
+    
     total_cost = 0.0
     all_batch_results = []
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all batches for processing
-        future_to_batch = {
-            executor.submit(process_image_batch, batch, prompt, i+1): i+1 
-            for i, batch in enumerate(batches)
-        }
-        
-        # Collect results as they complete
-        for future in as_completed(future_to_batch):
-            batch_num = future_to_batch[future]
-            try:
-                result, cost = future.result()
-                total_cost += cost
-                if result:
-                    all_batch_results.append(result)
-                    print(f"    [✔] Batch {batch_num} completed successfully")
-                else:
-                    print(f"    [!] Batch {batch_num} failed")
-            except Exception as e:
-                print(f"    [!] Batch {batch_num} failed with error: {e}")
+    try:
+        # Process all images in one API call
+        result, cost = call_openai_optimized_s3(image_objects, prompt)
+        total_cost += cost
+        if result:
+            all_batch_results.append(result)
+            print(f"    [✔] Single batch completed successfully with {len(image_objects)} images")
+        else:
+            print(f"    [!] Single batch failed")
+    except Exception as e:
+        print(f"    [!] Single batch failed with error: {e}")
+        print(f"    [🔄] Continuing with fallback processing...")
 
     # Phase 2: Intelligent merging with layout detection
     if all_batch_results:
@@ -3335,18 +3348,33 @@ def merge_multiple_layouts(layouts):
 def process_image_batch(image_batch, prompt, batch_num):
     """Process a single batch of images with OpenAI API."""
     try:
-        # Convert image paths to image objects format expected by call_openai_optimized_s3
-        image_objects = []
-        for image_path in image_batch:
-            image_name = os.path.basename(image_path)
-            image_objects.append({
-                'key': image_path,  # For local files, use the path as key
-                'name': image_name
-            })
+        # Set a timeout for individual batch processing (5 minutes)
+        import signal
+        def timeout_handler(signum, frame):
+            raise TimeoutError(f"Batch {batch_num} processing timed out")
         
-        result, cost = call_openai_optimized_s3(image_objects, prompt)
-        return result, cost
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(300)  # 5 minutes timeout
+        
+        try:
+            # Convert image paths to image objects format expected by call_openai_optimized_s3
+            image_objects = []
+            for image_path in image_batch:
+                image_name = os.path.basename(image_path)
+                image_objects.append({
+                    'key': image_path,  # For local files, use the path as key
+                    'name': image_name
+                })
+            
+            result, cost = call_openai_optimized_s3(image_objects, prompt)
+            return result, cost
+        finally:
+            signal.alarm(0)  # Cancel the alarm
+    except TimeoutError:
+        print(f"    [!] Batch {batch_num} timed out after 5 minutes")
+        return None, 0.0
     except Exception as e:
+        print(f"    [!] Batch {batch_num} failed with error: {e}")
         return None, 0.0
 
 
