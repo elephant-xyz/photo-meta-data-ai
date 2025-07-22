@@ -827,14 +827,21 @@ def call_openai_optimized_s3(image_objects, prompt):
                         "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}
                     })
 
+            # Calculate dynamic timeout based on batch size
+            batch_size = len(image_objects[:10])
+            dynamic_timeout = min(120, 30 + (batch_size * 15))  # 30s base + 15s per image, max 120s
+            
             try:
                 response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=messages,
                     temperature=0,
-                    timeout=60  # Reduced timeout to 1 minute
+                    timeout=dynamic_timeout
                 )
             except Exception as api_error:
+                logger.error(f"API error type: {type(api_error).__name__}")
+                if "timeout" in str(api_error).lower():
+                    logger.error(f"Request timed out after {dynamic_timeout} seconds for batch of {batch_size} images")
                 raise api_error
 
             usage = response.usage
@@ -890,10 +897,15 @@ def call_openai_optimized(image_paths, prompt):
                 "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}
             })
 
+        # Calculate dynamic timeout based on batch size
+        batch_size = len(image_paths[:10])
+        dynamic_timeout = min(120, 30 + (batch_size * 15))  # 30s base + 15s per image, max 120s
+        
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            temperature=0
+            temperature=0,
+            timeout=dynamic_timeout
         )
 
         usage = response.usage
@@ -2264,7 +2276,7 @@ def print_final_statistics():
     logger.info("=" * 60)
 
 
-def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_size=5, max_workers=3):
+def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process all properties from local categorized folders"""
     try:
         # Load seed data
@@ -2339,7 +2351,7 @@ def main():
     parser.add_argument('--property-id', type=str, help='Specific property ID to process (optional)')
     parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
     parser.add_argument('--local-folders', action='store_true', help='Process from local categorized folders')
-    parser.add_argument('--batch-size', type=int, default=5, help='Batch size for processing (default: 5)')
+    parser.add_argument('--batch-size', type=int, default=3, help='Batch size for processing (default: 3)')
     parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
     
@@ -3022,7 +3034,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=5, max_workers=3):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process images from local categorized folders"""
     try:
         # Local folder path: images/property_id/category/
@@ -3096,7 +3108,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         logger.error(f"❌ Error processing local folder {local_folder_path}: {e}")
         return False
 
-def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=5, max_workers=3):
+def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process a single S3 category folder with true multi-threading and intelligent layout merging."""
     start_time = time.time()
     
