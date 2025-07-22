@@ -160,7 +160,7 @@ def authenticate_aws():
 
         # Test connection
         s3_client.list_buckets()
-        print("✓ AWS S3 authentication successful")
+        logger.info("✓ AWS S3 authentication successful")
         return True
 
     except NoCredentialsError:
@@ -1181,10 +1181,10 @@ def generate_individual_object_files(batch_data, image_paths, output_dir, batch_
     }
 
     # Generate image files first
-    print(f"    [→] Generating image files...")
+    logger.info(f"Generating image files...")
     image_files = generate_image_json_files(image_paths, output_dir, batch_number)
     object_files["images"] = image_files
-    print(f"    [→] Generated {len(image_files)} image files")
+    logger.info(f"Generated {len(image_files)} image files")
 
     # Generate property-level object files
     property_objects = ["structure", "lot", "utility", "nearby_location"]
