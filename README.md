@@ -114,18 +114,7 @@ ai-analyzer --property-id 30434108090030050
 ai-analyzer --all-properties --batch-size 10 --max-workers 5
 ```
 
-### Run the Parcel Processor
 
-```bash
-# Process parcels using CSV data
-parcel-processor
-```
-
-This tool reads from:
-- `upload_results.csv` - Contains property CIDs and data CIDs
-- `seed.csv` - Contains parcel IDs and addresses
-
-See [PARCEL_PROCESSOR_USAGE.md](PARCEL_PROCESSOR_USAGE.md) for detailed usage.
 
 ### Run the Bucket Manager
 
