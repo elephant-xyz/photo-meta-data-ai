@@ -42,12 +42,13 @@ class RekognitionCategorizer:
         for env_path in env_paths:
             if os.path.exists(env_path):
                 load_dotenv(env_path)
-                print(f"✓ Loaded environment from {env_path}")
+                # Environment loaded successfully (no console output)
                 env_loaded = True
                 break
         
         if not env_loaded:
-            print("⚠️  No .env file found, using system environment variables")
+            # No .env file found (no console output)
+            pass
         
         return env_loaded
 
@@ -359,8 +360,8 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/photo-categorizer.log'),
-            logging.StreamHandler()
+            logging.FileHandler('logs/photo-categorizer.log')
+            # Removed StreamHandler to only log to files
         ]
     )
     logger = logging.getLogger(__name__)
