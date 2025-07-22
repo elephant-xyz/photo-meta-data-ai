@@ -28,6 +28,7 @@ setup(
             "ai-analyzer=src.ai_analyzer:main_cli",
             "parcel-processor=src.parcel_processor:main",
             "bucket-manager=src.bucket_manager:main",
+            "folder-setup=src.folder_setup:main",
         ],
     },
     classifiers=[
