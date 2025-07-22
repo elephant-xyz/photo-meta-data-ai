@@ -17,6 +17,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 import tempfile
 import logging
+from dotenv import load_dotenv
 
 # Configure logging
 def setup_logging():
@@ -34,6 +35,31 @@ def setup_logging():
         ]
     )
     return logging.getLogger(__name__)
+
+# Load environment variables from .env file
+def load_environment():
+    """Load environment variables from .env file"""
+    env_paths = [
+        '.env',
+        '/content/.env',
+        os.path.expanduser('~/.env')
+    ]
+    
+    env_loaded = False
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+            print(f"✓ Loaded environment from {env_path}")
+            env_loaded = True
+            break
+    
+    if not env_loaded:
+        print("⚠️  No .env file found, using system environment variables")
+    
+    return env_loaded
+
+# Load environment variables
+load_environment()
 
 logger = setup_logging()
 
