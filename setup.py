@@ -32,6 +32,7 @@ setup(
             "colab-folder-setup=src.colab_folder_setup:main",
             "quality-assessment=src.quality_assessment:main",
             "upload-to-s3=src.uploadtoS3:main",
+            "property-summarizer=src.property_summarizer:main",
         ],
     },
     classifiers=[
