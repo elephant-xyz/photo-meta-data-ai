@@ -2708,8 +2708,8 @@ def main():
     parser.add_argument('--property-id', type=str, help='Specific property ID to process (optional)')
     parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
     parser.add_argument('--local-folders', action='store_true', help='Process from local categorized folders')
-    parser.add_argument('--batch-size', type=int, default=3, help='Batch size for processing (default: 3)')
-    parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3)')
+    parser.add_argument('--batch-size', type=int, default=10, help='Batch size for processing (default: 10 for Colab)')
+    parser.add_argument('--max-workers', type=int, default=5, help='Maximum workers for parallel processing (default: 5 for Colab)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
     
     args = parser.parse_args()
@@ -3445,8 +3445,10 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
-    """Process images from local categorized folders"""
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=5):
+    """Process images from local categorized folders with optimized settings for Colab"""
+    start_time = time.time()
+    
     try:
         # Local folder path: images/property_id/category/
         local_folder_path = os.path.join("images", property_id, category)
@@ -3470,8 +3472,51 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         
         logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
         
-        # Process images in parallel batches for speed
-        batches = [image_files[i:i + batch_size] for i in range(0, len(image_files), batch_size)]
+        # Optimize for Colab: Process all images in a single call for speed
+        if len(image_files) <= 20:  # For small batches, use single call
+            logger.info(f"🚀 Processing all {len(image_files)} images in single call for speed")
+            
+            try:
+                # Process all images at once
+                result, cost = call_openai_optimized(image_files, prompt)
+                
+                if result:
+                    # Generate output files
+                    output_dir = os.path.join("output", property_id)
+                    os.makedirs(output_dir, exist_ok=True)
+                    
+                    # Generate individual object files
+                    object_files = generate_individual_object_files(result, image_files, output_dir, 1)
+                    
+                    # Generate relationships
+                    property_cid = generate_placeholder_cid("property", property_id)
+                    relationship_files = generate_relationships_from_object_files(
+                        object_files, image_files, property_cid, 1, local_folder_path
+                    )
+                    
+                    # Create main relationship file
+                    create_main_relationship_file(relationship_files, output_dir, property_id)
+                    
+                    elapsed = time.time() - start_time
+                    logger.info(f"✅ Successfully processed {len(image_files)} images in {elapsed:.1f}s")
+                    return True
+                else:
+                    logger.warning(f"⚠️  No result from single call processing")
+                    return False
+                    
+            except Exception as e:
+                logger.error(f"❌ Single call processing failed: {e}")
+                # Fall back to batch processing
+                logger.info(f"🔄 Falling back to batch processing...")
+        
+        # For larger batches, use optimized parallel processing
+        logger.info(f"🚀 Processing {len(image_files)} images in {max_workers} parallel batches")
+        
+        # Optimize batch size for Colab
+        optimal_batch_size = min(batch_size, max(5, len(image_files) // max_workers))
+        batches = [image_files[i:i + optimal_batch_size] for i in range(0, len(image_files), optimal_batch_size)]
+        
+        logger.info(f"📦 Created {len(batches)} batches of ~{optimal_batch_size} images each")
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []
@@ -3480,13 +3525,17 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
                 future = executor.submit(process_image_batch, batch, prompt, batch_num, schemas)
                 futures.append(future)
             
-            # Wait for all batches to complete
+            # Wait for all batches to complete with timeout
             batch_results = []
+            completed = 0
+            
             for future in as_completed(futures):
                 try:
-                    result = future.result()
+                    result = future.result(timeout=300)  # 5 minute timeout per batch
                     if result:
                         batch_results.append(result)
+                    completed += 1
+                    logger.info(f"✅ Completed batch {completed}/{len(batches)}")
                 except Exception as e:
                     logger.error(f"❌ Batch processing failed: {e}")
                     logger.info(f"🔄 Continuing with remaining batches...")
@@ -3511,7 +3560,8 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
             # Create main relationship file
             create_main_relationship_file(relationship_files, output_dir, property_id)
             
-            logger.info(f"✅ Successfully processed {len(image_files)} images from {local_folder_path}")
+            elapsed = time.time() - start_time
+            logger.info(f"✅ Successfully processed {len(image_files)} images in {elapsed:.1f}s")
             return True
         
         return False

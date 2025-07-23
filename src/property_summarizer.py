@@ -392,7 +392,8 @@ def summarize_all_properties(output_dir: str = "output"):
 # all_summaries = summarize_all_properties()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function for command-line usage"""
     parser = argparse.ArgumentParser(description="Summarize property data from AI analysis output")
     parser.add_argument("--property-id", help="Property ID to summarize")
     parser.add_argument("--all-properties", action="store_true", help="Summarize all available properties")
@@ -412,4 +413,8 @@ if __name__ == "__main__":
             for prop in properties:
                 print(f"  • {prop}")
         else:
-            print("  No properties found") 
+            print("  No properties found")
+
+
+if __name__ == "__main__":
+    main() 
