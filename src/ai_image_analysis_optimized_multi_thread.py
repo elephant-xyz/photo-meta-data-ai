@@ -103,8 +103,8 @@ SCHEMA_KEYS = [
 # VISUAL_TAG_FILE = "./schema/visual-tags.pdf"  # Removed dependency on PDF file
 
 # Image optimization settings
-MAX_IMAGE_SIZE = (1024, 1024)
-JPEG_QUALITY = 85
+MAX_IMAGE_SIZE = (800, 800)  # Reduced for faster Colab processing
+JPEG_QUALITY = 75  # Reduced for faster uploads
 
 # Parallel processing settings
 MAX_CONCURRENT_REQUESTS = 5  # Number of parallel API requests (be careful with rate limits)
@@ -203,22 +203,15 @@ def list_s3_folders():
 def list_s3_property_folders():
     """List property ID folders (not subfolders) in the S3 bucket"""
     try:
-        print(f"    [DEBUG] Listing property folders in bucket {S3_BUCKET_NAME}")
         response = s3_client.list_objects_v2(
             Bucket=S3_BUCKET_NAME,
             Delimiter='/'
         )
         
-        print(f"    [DEBUG] S3 response keys: {list(response.keys())}")
-        print(f"    [DEBUG] CommonPrefixes: {response.get('CommonPrefixes', [])}")
-        
         properties = []
         for prefix in response.get('CommonPrefixes', []):
             property_id = prefix['Prefix'].rstrip('/')
             properties.append(property_id)
-            print(f"    [DEBUG] Found property: {property_id}")
-        
-        print(f"    [DEBUG] Total properties found: {len(properties)}")
         return properties
     except Exception as e:
         print(f"Error listing S3 property folders: {e}")
@@ -227,23 +220,16 @@ def list_s3_property_folders():
 def list_s3_subfolders():
     """List all subfolders (kitchen, bedroom, bathroom, etc.) under the property ID"""
     try:
-        print(f"    [DEBUG] Listing subfolders with prefix: {S3_BASE_PREFIX}")
         response = s3_client.list_objects_v2(
             Bucket=S3_BUCKET_NAME,
             Prefix=S3_BASE_PREFIX,
             Delimiter='/'
         )
         
-        print(f"    [DEBUG] S3 response keys: {list(response.keys())}")
-        print(f"    [DEBUG] CommonPrefixes: {response.get('CommonPrefixes', [])}")
-        
         subfolders = []
         for prefix in response.get('CommonPrefixes', []):
             folder_name = prefix['Prefix'].rstrip('/').split('/')[-1]
             subfolders.append(folder_name)
-            print(f"    [DEBUG] Found subfolder: {folder_name}")
-        
-        print(f"    [DEBUG] Total subfolders found: {len(subfolders)}")
         return subfolders
     except Exception as e:
         print(f"Error listing S3 subfolders: {e}")
@@ -253,7 +239,6 @@ def list_s3_subfolders_for_property(property_id):
     """List all category folders for a specific property in S3."""
     try:
         property_prefix = f"{property_id}/"
-        print(f"    [DEBUG] Listing category folders for property {property_id} with prefix: {property_prefix}")
         
         response = s3_client.list_objects_v2(
             Bucket=S3_BUCKET_NAME,
@@ -261,16 +246,10 @@ def list_s3_subfolders_for_property(property_id):
             Delimiter='/'
         )
         
-        print(f"    [DEBUG] S3 response keys: {list(response.keys())}")
-        print(f"    [DEBUG] CommonPrefixes: {response.get('CommonPrefixes', [])}")
-        
         categories = []
         for prefix in response.get('CommonPrefixes', []):
             category_name = prefix['Prefix'].rstrip('/').split('/')[-1]
             categories.append(category_name)
-            print(f"    [DEBUG] Found category: {category_name}")
-        
-        print(f"    [DEBUG] Total categories found for {property_id}: {len(categories)}")
         return categories
     except Exception as e:
         print(f"Error listing S3 category folders for property {property_id}: {e}")
@@ -341,12 +320,10 @@ def download_s3_image_to_temp(s3_key):
     """Download an S3 image to a temporary file"""
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-            print(f"[DEBUG] Downloading {s3_key} to {tmp_file.name}")
             s3_client.download_file(S3_BUCKET_NAME, s3_key, tmp_file.name)
             
             # Verify file was downloaded and has content
             if os.path.exists(tmp_file.name) and os.path.getsize(tmp_file.name) > 0:
-                print(f"[DEBUG] Successfully downloaded {s3_key} ({os.path.getsize(tmp_file.name)} bytes)")
                 return tmp_file.name
             else:
                 print(f"[ERROR] Downloaded file is empty or missing: {tmp_file.name}")
@@ -603,7 +580,6 @@ def optimize_image(image_path):
             
             # Verify base64 encoding is valid
             if len(b64_data) > 0:
-                print(f"[DEBUG] Successfully optimized {image_path} ({len(b64_data)} chars base64)")
                 return b64_data
             else:
                 print(f"[ERROR] Empty base64 data for {image_path}")
@@ -2702,8 +2678,8 @@ def main():
     parser.add_argument('--property-id', type=str, help='Specific property ID to process (optional)')
     parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
     parser.add_argument('--local-folders', action='store_true', help='Process from local categorized folders')
-    parser.add_argument('--batch-size', type=int, default=10, help='Batch size for processing (default: 10 for Colab)')
-    parser.add_argument('--max-workers', type=int, default=5, help='Maximum workers for parallel processing (default: 5 for Colab)')
+    parser.add_argument('--batch-size', type=int, default=10, help='Batch size for processing (default: 10 - OpenAI limit)')
+    parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3 for Colab)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
     
     args = parser.parse_args()
@@ -3442,7 +3418,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=5):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=3):
     """Process images from local categorized folders with optimized settings for Colab"""
     start_time = time.time()
     
@@ -3470,7 +3446,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
         
         # Optimize for Colab: Process all images in a single call for speed
-        if len(image_files) <= 20:  # For small batches, use single call
+        if len(image_files) <= 30:  # For small batches, use single call
             logger.info(f"🚀 Processing all {len(image_files)} images in single call for speed")
             
             try:
@@ -3509,7 +3485,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         # For larger batches, use optimized parallel processing
         logger.info(f"🚀 Processing {len(image_files)} images in {max_workers} parallel batches")
         
-        # Optimize batch size for Colab
+        # Optimize batch size for Colab - respect OpenAI's 10 image limit
         optimal_batch_size = min(batch_size, max(5, len(image_files) // max_workers))
         batches = [image_files[i:i + optimal_batch_size] for i in range(0, len(image_files), optimal_batch_size)]
         
@@ -3528,7 +3504,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
             
             for future in as_completed(futures):
                 try:
-                    result = future.result(timeout=300)  # 5 minute timeout per batch
+                    result = future.result(timeout=600)  # 10 minute timeout per batch for Colab
                     if result:
                         batch_results.append(result)
                     completed += 1
@@ -3751,8 +3727,6 @@ def merge_batch_results_intelligently(batch_results, schemas=None):
         # For now, use space_type as the primary grouping key
         group_key = space_type
         
-        print(f"    [DEBUG] Layout grouping: {layout.get('space_type', 'unknown')} -> cleaned: {space_type} -> {group_key}")
-        
         if group_key not in layout_groups:
             layout_groups[group_key] = []
         layout_groups[group_key].append(layout)
@@ -3762,14 +3736,10 @@ def merge_batch_results_intelligently(batch_results, schemas=None):
         if len(layouts) == 1:
             # Single layout, no merging needed
             merged["layout"].append(layouts[0])
-            print(f"    [DEBUG] Added single layout for {group_key}")
         else:
             # Multiple layouts for same room, merge them
-            print(f"    [DEBUG] Merging {len(layouts)} layouts for {group_key}")
-            print(f"    [DEBUG] Layouts to merge: {[l.get('space_type', 'unknown') for l in layouts]}")
             merged_layout = merge_multiple_layouts(layouts)
             merged["layout"].append(merged_layout)
-            print(f"    [DEBUG] Merged into: {merged_layout.get('space_type', 'unknown')}")
     
     # Merge other data types
     for batch_result in batch_results:
@@ -3825,10 +3795,7 @@ def merge_multiple_layouts(layouts):
     
     # Merge additional layouts
     for i, layout in enumerate(layouts[1:], 1):
-        print(f"    [DEBUG] Merging layout {i+1}: {layout.get('space_type', 'unknown')}")
         merged = merge_layout_data(merged, layout)
-    
-    print(f"    [DEBUG] Final merged layout: {merged.get('space_type', 'unknown')}")
     return merged
 
 
@@ -3849,9 +3816,7 @@ def process_image_batch(image_batch, prompt, batch_num, schemas=None):
                     'name': image_name
                 })
         
-        print(f"    [DEBUG] Batch {batch_num} processing {len(image_objects)} images")
-        for i, img in enumerate(image_objects):
-            print(f"    [DEBUG] Image {i+1}: {img.get('key', 'unknown')}")
+        # Process images silently
         
         result, cost = call_openai_optimized_s3(image_objects, prompt, schemas)
         if result is None:

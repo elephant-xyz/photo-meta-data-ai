@@ -64,12 +64,9 @@ def summarize_structure(output_dir: str) -> Dict:
     }
     
     structure_file = Path(output_dir) / "structure.json"
-    print(f"    [DEBUG] Looking for structure file: {structure_file}")
     if structure_file.exists():
-        print(f"    [DEBUG] Structure file found: {structure_file}")
         data = load_json_file(str(structure_file))
         if data:
-            print(f"    [DEBUG] Structure data loaded successfully")
             structure_summary["file_found"] = True
             structure_summary["details"] = {
                 "building_type": data.get("architectural_style_type", data.get("building_type", "unknown")),
@@ -81,10 +78,6 @@ def summarize_structure(output_dir: str) -> Dict:
                 "condition": data.get("exterior_wall_condition", data.get("condition", "unknown")),
                 "features": data.get("features", [])
             }
-        else:
-            print(f"    [DEBUG] Structure file exists but failed to load data")
-    else:
-        print(f"    [DEBUG] Structure file not found: {structure_file}")
     
     return structure_summary
 
@@ -97,12 +90,9 @@ def summarize_lot(output_dir: str) -> Dict:
     }
     
     lot_file = Path(output_dir) / "lot.json"
-    print(f"    [DEBUG] Looking for lot file: {lot_file}")
     if lot_file.exists():
-        print(f"    [DEBUG] Lot file found: {lot_file}")
         data = load_json_file(str(lot_file))
         if data:
-            print(f"    [DEBUG] Lot data loaded successfully")
             lot_summary["file_found"] = True
             lot_summary["details"] = {
                 "lot_size": data.get("lot_area_sqft", data.get("lot_size", "unknown")),
@@ -112,10 +102,6 @@ def summarize_lot(output_dir: str) -> Dict:
                 "parking": data.get("driveway_material", data.get("parking", "unknown")),
                 "zoning": data.get("lot_type", data.get("zoning", "unknown"))
             }
-        else:
-            print(f"    [DEBUG] Lot file exists but failed to load data")
-    else:
-        print(f"    [DEBUG] Lot file not found: {lot_file}")
     
     return lot_summary
 
