@@ -10,7 +10,7 @@ echo "=================================================="
 # Install dependencies
 pip install pandas requests python-dotenv
 
-# Run the updated Python script with correct arguments
-python colab_folder_setup.py --base-path . --upload-results-file upload_results.csv
+# Run the updated Python script from src directory
+python src/colab_folder_setup.py
 
 echo "✅ Folder setup completed!" 

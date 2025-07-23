@@ -10,6 +10,7 @@ import json
 import requests
 import pandas as pd
 from pathlib import Path
+import argparse
 
 def fetch_from_ipfs(cid):
     """Fetch content from IPFS using the CID"""
@@ -116,15 +117,15 @@ def extract_property_data(df):
     
     return property_data
 
-def create_folders_and_cid_files(property_data):
+def create_folders_and_cid_files(property_data, base_path="."):
     """Create folder structure and property CID files"""
     # Create the root image folder for images
-    image_folder_path = "./images"
+    image_folder_path = os.path.join(base_path, "images")
     os.makedirs(image_folder_path, exist_ok=True)
     print(f"✓ Created images folder: {image_folder_path}")
     
     # Create the output folder for CID files
-    output_folder_path = "./output"
+    output_folder_path = os.path.join(base_path, "output")
     os.makedirs(output_folder_path, exist_ok=True)
     print(f"✓ Created output folder: {output_folder_path}")
     
@@ -174,30 +175,39 @@ def create_folders_and_cid_files(property_data):
 
 def main():
     """Main function for Colab"""
+    parser = argparse.ArgumentParser(description='Colab Folder Setup Script')
+    parser.add_argument('--base-path', type=str, default='.', 
+                       help='Base path for creating folders (default: current directory)')
+    parser.add_argument('--upload-results-file', type=str, default='upload_results.csv',
+                       help='Path to upload_results.csv file (default: upload_results.csv)')
+    
+    args = parser.parse_args()
+    
     print("🚀 Starting Colab Folder Setup...")
     print("=" * 50)
     
     # Check if upload_results.csv exists
-    if not os.path.exists('upload_results.csv'):
-        print("❌ upload_results.csv not found!")
-        print("Please create upload_results.csv with your property data first.")
+    upload_results_path = os.path.join(args.base_path, args.upload_results_file)
+    if not os.path.exists(upload_results_path):
+        print(f"❌ {args.upload_results_file} not found!")
+        print(f"Please create {args.upload_results_file} with your property data first.")
         return
     
     # Load upload results
     try:
-        df = pd.read_csv('upload_results.csv')
-        print(f"✓ Loaded upload results file: upload_results.csv")
+        df = pd.read_csv(upload_results_path)
+        print(f"✓ Loaded upload results file: {args.upload_results_file}")
         print(f"  - Rows: {len(df)}")
         print(f"  - Columns: {list(df.columns)}")
     except Exception as e:
-        print(f"❌ Error loading upload_results.csv: {e}")
+        print(f"❌ Error loading {args.upload_results_file}: {e}")
         return
     
     # Extract property data
     try:
         property_data = extract_property_data(df)
         if not property_data:
-            print("❌ No property data found in upload_results.csv")
+            print(f"❌ No property data found in {args.upload_results_file}")
             return
         
         property_ids = list(property_data.keys())
@@ -212,7 +222,7 @@ def main():
     
     # Create folder structure and CID files
     try:
-        created_image_folders, created_cid_files = create_folders_and_cid_files(property_data)
+        created_image_folders, created_cid_files = create_folders_and_cid_files(property_data, args.base_path)
         
         print(f"\n{'='*50}")
         print("FOLDER SETUP COMPLETED")
@@ -230,15 +240,15 @@ def main():
         for folder in sorted(created_image_folders):
             print(f"    └── {folder}/")
             # Show CID files in output folder
-            output_folder_path_property = os.path.join("./output", folder)
+            output_folder_path_property = os.path.join(args.base_path, "output", folder)
             if os.path.exists(output_folder_path_property):
                 cid_files = [f for f in os.listdir(output_folder_path_property) if f.endswith('.json')]
                 for cid_file in cid_files:
                     print(f"        └── {cid_file}")
         
         print(f"\n🎉 Ready for image upload!")
-        print(f"   Place images in: ./images/[property_id]/")
-        print(f"   CID files created in: ./output/[property_id]/")
+        print(f"   Place images in: {os.path.join(args.base_path, 'images')}/[property_id]/")
+        print(f"   CID files created in: {os.path.join(args.base_path, 'output')}/[property_id]/")
         print(f"   CID files created with actual IPFS CIDs")
         
     except Exception as e:
