@@ -2565,6 +2565,74 @@ def print_final_statistics():
     logger.info("=" * 60)
 
 
+def process_all_local_properties_from_folders(property_folders, prompt, schemas=None, batch_size=3, max_workers=3):
+    """Process all local properties from discovered folders"""
+    logger.info(f"🖥️  Processing {len(property_folders)} local properties...")
+    
+    total_successful = 0
+    total_failed = 0
+    
+    for property_id in property_folders:
+        logger.info(f"\n{'='*80}")
+        logger.info(f"🏠 Processing Local Property: {property_id}")
+        logger.info(f"{'='*80}")
+        
+        # Check if property has categorized folders
+        property_path = os.path.join("images", property_id)
+        if not os.path.exists(property_path):
+            logger.warning(f"⚠️  Property folder {property_path} not found, skipping...")
+            total_failed += 1
+            continue
+        
+        # Get all category folders for this property
+        categories = []
+        for item in os.listdir(property_path):
+            item_path = os.path.join(property_path, item)
+            if os.path.isdir(item_path):
+                categories.append(item)
+        
+        if not categories:
+            logger.warning(f"⚠️  No category folders found for property {property_id}, skipping...")
+            total_failed += 1
+            continue
+        
+        logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
+        
+        # Process each category folder
+        property_success = False
+        for category in categories:
+            logger.info(f"\n{'='*60}")
+            logger.info(f"🏠 Processing Category: {category}")
+            logger.info(f"{'='*60}")
+            
+            try:
+                # Process the category folder
+                success = process_local_category_folder(property_id, category, prompt, schemas, batch_size, max_workers)
+                if success:
+                    property_success = True
+                    logger.info(f"✅ Successfully processed category {category}")
+                else:
+                    logger.warning(f"⚠️  Failed to process category {category}")
+            except Exception as e:
+                logger.error(f"❌ Error processing category {category}: {e}")
+        
+        if property_success:
+            total_successful += 1
+            logger.info(f"✅ Successfully processed property {property_id}")
+        else:
+            total_failed += 1
+            logger.warning(f"⚠️  Failed to process property {property_id}")
+    
+    logger.info(f"\n{'='*60}")
+    logger.info(f"LOCAL PROCESSING SUMMARY")
+    logger.info(f"{'='*60}")
+    logger.info(f"Total properties processed: {len(property_folders)}")
+    logger.info(f"Successful: {total_successful}")
+    logger.info(f"Failed: {total_failed}")
+    
+    return total_successful > 0
+
+
 def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process all properties from local categorized folders"""
     try:
@@ -2698,60 +2766,88 @@ def main():
         logger.warning("⚠️  Bucket manager not available, skipping bucket check...")
         logger.info("✓ Continuing without bucket verification...")
 
-    # Load properties from seed.csv
-    seed_data_path = "seed.csv"
-    
-    if not os.path.exists(seed_data_path):
-        logger.error(f"❌ {seed_data_path} not found!")
-        logger.error("Please provide seed.csv with parcel_id,Address columns")
-        return
-    
-    logger.info(f"✓ Found {seed_data_path}")
-    
-    # Load seed data to get property IDs
-    try:
-        df = pd.read_csv(seed_data_path)
-        logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
-        
-        properties = []
-        for _, row in df.iterrows():
-            parcel_id = str(row['parcel_id'])
-            properties.append(parcel_id)
-        
-        logger.info(f"✓ Created {len(properties)} property mappings from seed.csv")
-        
-    except Exception as e:
-        logger.error(f"Error loading seed data CSV: {e}")
-        return
-    
-    if not properties:
-        logger.error("❌ No properties found in seed.csv. Please ensure the file contains parcel_id and Address columns.")
-        return
-    
-    logger.info(f"📁 Found {len(properties)} properties from seed.csv: {', '.join(properties)}")
-
-    # Filter properties based on arguments
+    # Get properties based on arguments
     if args.local_folders:
         # Process from local categorized folders
         logger.info("🖥️  Processing from local categorized folders...")
+        
+        # Discover properties from images directory
+        images_dir = "images"
+        if not os.path.exists(images_dir):
+            logger.error(f"❌ Images directory '{images_dir}' not found!")
+            logger.error("Please ensure the images directory exists with property folders")
+            return
+        
+        try:
+            property_folders = []
+            for item in os.listdir(images_dir):
+                item_path = os.path.join(images_dir, item)
+                if os.path.isdir(item_path):
+                    property_folders.append(item)
+            
+            if not property_folders:
+                logger.error(f"❌ No property folders found in {images_dir}!")
+                logger.error("Please ensure the images directory contains property folders")
+                return
+            
+            logger.info(f"✓ Found {len(property_folders)} property folders: {', '.join(property_folders)}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error discovering properties: {e}")
+            return
+        
         prompt = load_optimized_json_schema_prompt(None, schemas)
-        success = process_all_local_properties(seed_data_path, prompt, schemas, 
-                                             batch_size=args.batch_size, max_workers=args.max_workers)
+        success = process_all_local_properties_from_folders(property_folders, prompt, schemas, 
+                                                         batch_size=args.batch_size, max_workers=args.max_workers)
         if success:
             logger.info("🎉 Local folder processing completed successfully!")
         else:
             logger.error("❌ Local folder processing failed!")
         return
-    elif args.property_id:
-        if args.property_id not in properties:
-            logger.error(f"❌ Property {args.property_id} not found in seed.csv.")
-            return
-        properties_to_process = [args.property_id]
-    elif args.all_properties:
-        properties_to_process = properties
     else:
-        logger.error("❌ Please specify either --property-id, --all-properties, or --local-folders")
-        return
+        # Load properties from seed.csv for S3 processing
+        seed_data_path = "seed.csv"
+        
+        if not os.path.exists(seed_data_path):
+            logger.error(f"❌ {seed_data_path} not found!")
+            logger.error("Please provide seed.csv with parcel_id,Address columns")
+            return
+        
+        logger.info(f"✓ Found {seed_data_path}")
+        
+        # Load seed data to get property IDs
+        try:
+            df = pd.read_csv(seed_data_path)
+            logger.info(f"✓ Loaded {len(df)} records from seed data CSV")
+            
+            properties = []
+            for _, row in df.iterrows():
+                parcel_id = str(row['parcel_id'])
+                properties.append(parcel_id)
+            
+            logger.info(f"✓ Created {len(properties)} property mappings from seed.csv")
+            
+        except Exception as e:
+            logger.error(f"Error loading seed data CSV: {e}")
+            return
+        
+        if not properties:
+            logger.error("❌ No properties found in seed.csv. Please ensure the file contains parcel_id and Address columns.")
+            return
+        
+        logger.info(f"📁 Found {len(properties)} properties from seed.csv: {', '.join(properties)}")
+        
+        # Filter properties based on arguments
+        if args.property_id:
+            if args.property_id not in properties:
+                logger.error(f"❌ Property {args.property_id} not found in seed.csv.")
+                return
+            properties_to_process = [args.property_id]
+        elif args.all_properties:
+            properties_to_process = properties
+        else:
+            logger.error("❌ Please specify either --property-id, --all-properties, or --local-folders")
+            return
 
     logger.info(f"🎯 Processing {len(properties_to_process)} properties from S3: {', '.join(properties_to_process)}")
 
