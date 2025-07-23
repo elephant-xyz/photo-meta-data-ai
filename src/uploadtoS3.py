@@ -13,15 +13,42 @@ from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 import mimetypes
+from dotenv import load_dotenv
 
 
 class PropertyImagesUploader:
     def __init__(self):
+        # Load environment variables from .env file
+        self.load_environment()
+        
         self.s3_client = None
         self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai').rstrip('/')
         
         # Setup logging
         self.setup_logging()
+
+    def load_environment(self):
+        """Load environment variables from .env file"""
+        # Try to load from .env file
+        env_paths = [
+            '.env',
+            '/content/.env',
+            os.path.expanduser('~/.env')
+        ]
+        
+        env_loaded = False
+        for env_path in env_paths:
+            if os.path.exists(env_path):
+                load_dotenv(env_path)
+                # Environment loaded successfully (no console output)
+                env_loaded = True
+                break
+        
+        if not env_loaded:
+            # No .env file found (no console output)
+            pass
+        
+        return env_loaded
 
     def setup_logging(self):
         """Setup logging configuration"""
