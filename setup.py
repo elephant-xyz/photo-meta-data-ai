@@ -27,7 +27,7 @@ setup(
             "photo-categorizer=src.rekognition:main",
             "ai-analyzer=src.ai_image_analysis_optimized_multi_thread:main",
             "bucket-manager=src.bucket_manager:main",
-            "folder-setup=src.folder_setup:main",
+            "colab-folder-setup=src.colab_folder_setup:main",
         ],
     },
     classifiers=[
