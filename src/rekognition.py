@@ -393,18 +393,6 @@ class RekognitionCategorizer:
             else:
                 print(f"   Categories: None")
         
-        # Top detected labels
-        all_labels = defaultdict(int)
-        for result in all_results.values():
-            for image_detail in result['image_details']:
-                for label in image_detail['labels']:
-                    all_labels[label] += 1
-        
-        if all_labels:
-            print(f"\n🏷️  TOP DETECTED LABELS:")
-            for label, count in sorted(all_labels.items(), key=lambda x: x[1], reverse=True)[:10]:
-                print(f"   • {label}: {count} times")
-        
         print("\n" + "="*80)
 
     def process_image_with_rekognition(self, image_key, property_id):
@@ -547,16 +535,6 @@ def main():
     logger.info(f"Target S3 Bucket: {bucket_name}")
     logger.info("=" * 45)
 
-    # Check for required files
-    seed_data_path = "seed.csv"
-    
-    if not os.path.exists(seed_data_path):
-        logger.error(f"❌ {seed_data_path} not found!")
-        logger.error("Please provide seed.csv with parcel_id,Address columns")
-        sys.exit(1)
-    
-    logger.info(f"✓ Found {seed_data_path}")
-
     # Initialize categorizer
     categorizer = RekognitionCategorizer()
 
@@ -575,42 +553,90 @@ def main():
         sys.exit(1)
     logger.info("\n✅ Bucket is ready!")
 
-    # Auto-upload and process all properties
-    logger.info("\n3. Auto-processing all properties from seed.csv...")
-    
-    # Upload all properties first
-    from .uploadtoS3 import PropertyImagesUploader
-    uploader = PropertyImagesUploader()
-    uploader.authenticate_aws()
-    logger.info("\n📤 Uploading all images to S3...")
-    upload_success = uploader.upload_all_properties_from_seed(seed_data_path, bucket_name, "images")
-    if not upload_success:
-        logger.error("\n❌ Upload failed! Cannot proceed with categorization.")
+    # Get all properties from S3 bucket
+    logger.info("\n3. Discovering properties in S3 bucket...")
+    try:
+        response = categorizer.s3_client.list_objects_v2(
+            Bucket=bucket_name,
+            Delimiter='/'
+        )
+        
+        properties = []
+        if 'CommonPrefixes' in response:
+            for prefix in response['CommonPrefixes']:
+                property_id = prefix['Prefix'].rstrip('/')
+                properties.append(property_id)
+        
+        if not properties:
+            logger.error(f"❌ No properties found in S3 bucket {bucket_name}!")
+            logger.error("Please ensure images are uploaded to S3 first.")
+            sys.exit(1)
+        
+        logger.info(f"✓ Found {len(properties)} properties in S3 bucket")
+        
+    except Exception as e:
+        logger.error(f"❌ Error discovering properties: {e}")
         sys.exit(1)
-    logger.info("\n✅ Upload completed! Proceeding with categorization...")
 
-    # Process all properties from seed.csv
-    logger.info("\n4. Processing all properties from seed.csv...")
+    # Process all properties found in S3
+    logger.info("\n4. Processing all properties from S3...")
     logger.info("\n5. Starting image analysis and categorization with multi-threading...")
     
-    success = categorizer.process_all_properties_from_seed(seed_data_path, max_workers=5)
-
-    if success:
+    all_results = {}
+    total_properties = 0
+    successful_properties = 0
+    
+    for property_id in properties:
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Processing Property {total_properties + 1}: {property_id}")
+        logger.info(f"{'='*80}")
+        
+        # Process the property with multi-threading
+        result = categorizer.process_property(property_id, f"Property {property_id}", max_workers=5)
+        if result and result['categorized_images'] > 0:
+            successful_properties += 1
+            all_results[property_id] = result
+            logger.info(f"✓ Successfully processed property {property_id}")
+        else:
+            logger.warning(f"⚠️  No images found or failed to process property {property_id}")
+            # Add failed property to results for summary
+            all_results[property_id] = {
+                'property_id': property_id,
+                'address': f"Property {property_id}",
+                'total_images': 0,
+                'categorized_images': 0,
+                'categories': defaultdict(int),
+                'image_details': []
+            }
+        
+        total_properties += 1
+    
+    # Print comprehensive summary
+    categorizer.print_comprehensive_summary(all_results)
+    
+    # Final summary
+    logger.info(f"\n{'='*70}")
+    logger.info(f"FINAL SUMMARY")
+    logger.info(f"{'='*70}")
+    logger.info(f"Total properties processed: {total_properties}")
+    logger.info(f"Successful: {successful_properties}")
+    logger.info(f"Failed: {total_properties - successful_properties}")
+    
+    if successful_properties > 0:
         logger.info("\n🎉 Image categorization completed successfully!")
         logger.info("\nCategorized images are now organized in S3:")
         logger.info(f"s3://{bucket_name}/property-id/category/image.jpg")
         
         # Download categorized images to local
         logger.info("\n6. Downloading categorized images to local folders...")
-        parcel_mapping = categorizer.load_seed_data(seed_data_path)
         
-        for parcel_id, address in parcel_mapping.items():
-            logger.info(f"\n📥 Downloading categorized images for property {parcel_id}...")
-            download_success = categorizer.download_categorized_images_to_local(parcel_id)
+        for property_id in properties:
+            logger.info(f"\n📥 Downloading categorized images for property {property_id}...")
+            download_success = categorizer.download_categorized_images_to_local(property_id)
             if download_success:
-                logger.info(f"✅ Successfully downloaded categorized images for {parcel_id}")
+                logger.info(f"✅ Successfully downloaded categorized images for {property_id}")
             else:
-                logger.warning(f"⚠️  Failed to download categorized images for {parcel_id}")
+                logger.warning(f"⚠️  Failed to download categorized images for {property_id}")
         
         logger.info("\n🎉 All categorized images downloaded to local folders!")
         logger.info("Local structure: images/parcel_id/category/image.jpg")

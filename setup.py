@@ -21,6 +21,8 @@ setup(
         "requests>=2.31.0",
         "Pillow>=10.0.0",
         "pandas>=2.0.0",
+        "opencv-python>=4.8.0",
+        "numpy>=1.24.0",
     ],
     entry_points={
         "console_scripts": [
@@ -28,6 +30,7 @@ setup(
             "ai-analyzer=src.ai_image_analysis_optimized_multi_thread:main",
             "bucket-manager=src.bucket_manager:main",
             "colab-folder-setup=src.colab_folder_setup:main",
+            "quality-assessment=src.quality_assessment:main",
         ],
     },
     classifiers=[
