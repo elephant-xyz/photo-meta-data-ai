@@ -42,6 +42,7 @@ ai-analyzer = "src.ai_image_analysis_optimized_multi_thread:main"
 bucket-manager = "src.bucket_manager:main"
 colab-folder-setup = "src.colab_folder_setup:main"
 quality-assessment = "src.quality_assessment:main"
+upload-to-s3 = "src.uploadtoS3:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/photo-meta-data-ai"
