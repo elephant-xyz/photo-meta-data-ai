@@ -102,24 +102,23 @@ def list_s3_images_in_folder(folder_name, property_id=None):
             Prefix=prefix
         )
         
-        image_objects = []
-        if 'Contents' in response:
-            for obj in response['Contents']:
-                key = obj['Key']
-                if key.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp')):
-                    image_objects.append({
-                        'Key': key,
-                        'Size': obj['Size'],
-                        'LastModified': obj['LastModified']
-                    })
+        images = []
+        for obj in response.get('Contents', []):
+            key = obj['Key']
+            if key.lower().endswith(('.jpg', '.jpeg', '.png')):
+                images.append({
+                    'key': key,
+                    'name': os.path.basename(key),
+                    'folder': folder_name
+                })
         
-        return image_objects
+        return images
     except Exception as e:
         logger.error(f"Error listing images in folder {folder_name}: {e}")
         return []
 
 def download_s3_image_to_temp(s3_key):
-    """Download S3 image to temporary file."""
+    """Download an S3 image to a temporary file."""
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
             s3_client.download_file(S3_BUCKET_NAME, s3_key, tmp_file.name)
@@ -129,21 +128,10 @@ def download_s3_image_to_temp(s3_key):
         return None
 
 def calculate_image_hash(image_path: str) -> str:
-    """Calculate perceptual hash of image for duplicate detection."""
+    """Calculate a hash for the image to detect exact duplicates."""
     try:
-        with Image.open(image_path) as img:
-            # Convert to grayscale and resize for consistent hashing
-            img = img.convert('L').resize((8, 8))
-            pixels = list(img.getdata())
-            
-            # Calculate average pixel value
-            avg = sum(pixels) / len(pixels)
-            
-            # Create hash based on pixels above/below average
-            hash_str = ''.join(['1' if pixel > avg else '0' for pixel in pixels])
-            
-            # Convert binary to hex
-            return hex(int(hash_str, 2))[2:].zfill(16)
+        with open(image_path, 'rb') as f:
+            return hashlib.md5(f.read()).hexdigest()
     except Exception as e:
         logger.error(f"Error calculating hash for {image_path}: {e}")
         return ""
@@ -162,8 +150,10 @@ def calculate_image_similarity(img1_path: str, img2_path: str) -> float:
         gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
         gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
         
-        # Use SIFT for feature detection
+        # Initialize SIFT detector
         sift = cv2.SIFT_create()
+        
+        # Find keypoints and descriptors
         kp1, des1 = sift.detectAndCompute(gray1, None)
         kp2, des2 = sift.detectAndCompute(gray2, None)
         
@@ -188,6 +178,7 @@ def calculate_image_similarity(img1_path: str, img2_path: str) -> float:
         
         # Calculate similarity score
         similarity = len(good_matches) / max(len(kp1), len(kp2)) if max(len(kp1), len(kp2)) > 0 else 0.0
+        
         return min(similarity, 1.0)
         
     except Exception as e:
@@ -197,132 +188,142 @@ def calculate_image_similarity(img1_path: str, img2_path: str) -> float:
 def assess_image_quality(image_path: str) -> dict:
     """Assess image quality using multiple metrics."""
     try:
-        with Image.open(image_path) as img:
-            # Basic quality metrics
-            width, height = img.size
-            aspect_ratio = width / height if height > 0 else 0
-            
-            # Calculate brightness
-            gray_img = img.convert('L')
-            brightness = np.mean(np.array(gray_img))
-            
-            # Calculate contrast
-            contrast = np.std(np.array(gray_img))
-            
-            # Calculate sharpness (using Laplacian variance)
-            gray_array = np.array(gray_img)
-            laplacian_var = cv2.Laplacian(gray_array, cv2.CV_64F).var()
-            
-            # Determine quality score (0-10)
-            quality_score = 0
-            
-            # Resolution score (0-3 points)
-            if width >= 1920 and height >= 1080:
-                quality_score += 3
-            elif width >= 1280 and height >= 720:
-                quality_score += 2
-            elif width >= 640 and height >= 480:
-                quality_score += 1
-            
-            # Brightness score (0-2 points)
-            if 50 <= brightness <= 200:
-                quality_score += 2
-            elif 30 <= brightness <= 220:
-                quality_score += 1
-            
-            # Contrast score (0-2 points)
-            if contrast >= 50:
-                quality_score += 2
-            elif contrast >= 30:
-                quality_score += 1
-            
-            # Sharpness score (0-3 points)
-            if laplacian_var >= 100:
-                quality_score += 3
-            elif laplacian_var >= 50:
-                quality_score += 2
-            elif laplacian_var >= 20:
-                quality_score += 1
-            
-            # Quality rating
-            if quality_score >= 8:
-                quality_rating = "excellent"
-            elif quality_score >= 6:
-                quality_rating = "good"
-            elif quality_score >= 4:
-                quality_rating = "fair"
-            elif quality_score >= 2:
-                quality_rating = "poor"
-            else:
-                quality_rating = "very_poor"
-            
+        # Load image
+        img = cv2.imread(image_path)
+        if img is None:
             return {
-                "quality_score": quality_score,
-                "quality_rating": quality_rating,
-                "resolution": f"{width}x{height}",
-                "aspect_ratio": round(aspect_ratio, 2),
-                "brightness": round(brightness, 1),
-                "contrast": round(contrast, 1),
-                "sharpness": round(laplacian_var, 1),
-                "file_size_mb": round(os.path.getsize(image_path) / (1024 * 1024), 2)
+                "quality_score": 0,
+                "quality_rating": "error",
+                "error": "Could not load image"
             }
-            
+        
+        # Get image dimensions
+        height, width = img.shape[:2]
+        
+        # Get file size
+        file_size_mb = os.path.getsize(image_path) / (1024 * 1024)
+        
+        # Convert to grayscale for analysis
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Calculate brightness (average pixel intensity)
+        brightness = np.mean(gray)
+        
+        # Calculate contrast (standard deviation of pixel values)
+        contrast = np.std(gray)
+        
+        # Calculate sharpness using Laplacian variance
+        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+        sharpness = laplacian.var()
+        
+        # Calculate noise level (simplified)
+        noise_level = "low" if sharpness > 100 else "medium" if sharpness > 50 else "high"
+        
+        # Determine quality score (0-10)
+        quality_score = 0
+        
+        # Resolution scoring
+        if width >= 1920 and height >= 1080:
+            quality_score += 3
+        elif width >= 1280 and height >= 720:
+            quality_score += 2
+        else:
+            quality_score += 1
+        
+        # File size scoring (assuming good compression)
+        if file_size_mb >= 1.0:
+            quality_score += 2
+        else:
+            quality_score += 1
+        
+        # Brightness scoring
+        if 50 <= brightness <= 200:
+            quality_score += 2
+        else:
+            quality_score += 1
+        
+        # Contrast scoring
+        if contrast >= 30:
+            quality_score += 2
+        else:
+            quality_score += 1
+        
+        # Sharpness scoring
+        if sharpness >= 100:
+            quality_score += 3
+        elif sharpness >= 50:
+            quality_score += 2
+        else:
+            quality_score += 1
+        
+        # Quality rating
+        if quality_score >= 8:
+            quality_rating = "excellent"
+        elif quality_score >= 6:
+            quality_rating = "good"
+        elif quality_score >= 4:
+            quality_rating = "fair"
+        elif quality_score >= 2:
+            quality_rating = "poor"
+        else:
+            quality_rating = "very_poor"
+        
+        return {
+            "quality_score": quality_score,
+            "quality_rating": quality_rating,
+            "resolution": f"{width}x{height}",
+            "file_size_mb": round(file_size_mb, 2),
+            "brightness": round(brightness, 1),
+            "contrast": round(contrast, 1),
+            "sharpness": round(sharpness, 2),
+            "noise_level": noise_level
+        }
+        
     except Exception as e:
         logger.error(f"Error assessing quality for {image_path}: {e}")
         return {
             "quality_score": 0,
             "quality_rating": "error",
-            "resolution": "unknown",
-            "aspect_ratio": 0,
-            "brightness": 0,
-            "contrast": 0,
-            "sharpness": 0,
-            "file_size_mb": 0
+            "error": str(e)
         }
 
 def detect_duplicates(image_paths: list, similarity_threshold: float = 0.8) -> dict:
-    """Detect duplicate images using perceptual hashing and feature similarity."""
+    """Detect duplicate images using hash and similarity comparison."""
     duplicates = {}
-    image_hashes = {}
     
-    # Calculate hashes for all images
+    # First, detect exact duplicates using hash
+    image_hashes = {}
     for img_path in image_paths:
         img_hash = calculate_image_hash(img_path)
-        if img_hash:
-            if img_hash not in image_hashes:
-                image_hashes[img_hash] = []
-            image_hashes[img_hash].append(img_path)
+        if img_hash in image_hashes:
+            # Exact duplicate found
+            original_path = image_hashes[img_hash]
+            if original_path not in duplicates:
+                duplicates[original_path] = []
+            duplicates[original_path].append(img_path)
+        else:
+            image_hashes[img_hash] = img_path
     
-    # Find exact duplicates (same hash)
-    for img_hash, paths in image_hashes.items():
-        if len(paths) > 1:
-            # All images with same hash are duplicates
-            for path in paths:
-                duplicates[path] = [p for p in paths if p != path]
-    
-    # Find similar images (different hash but high similarity)
+    # Then, detect similar images using feature matching
     for i, img1_path in enumerate(image_paths):
         if img1_path in duplicates:
-            continue  # Already marked as duplicate
+            continue  # Skip if already marked as duplicate
             
         for j, img2_path in enumerate(image_paths[i+1:], i+1):
             if img2_path in duplicates:
-                continue  # Already marked as duplicate
+                continue  # Skip if already marked as duplicate
                 
             similarity = calculate_image_similarity(img1_path, img2_path)
+            
             if similarity >= similarity_threshold:
                 if img1_path not in duplicates:
                     duplicates[img1_path] = []
-                if img2_path not in duplicates:
-                    duplicates[img2_path] = []
-                
                 duplicates[img1_path].append(img2_path)
-                duplicates[img2_path].append(img1_path)
     
     return duplicates
 
-def create_quality_mapping(image_paths: list, output_dir: str, similarity_threshold: float = 0.8) -> dict:
-    """Create quality mapping for all images."""
+def create_quality_mapping(image_paths: list, similarity_threshold: float = 0.8) -> dict:
+    """Create quality mapping for all images (without saving to file)."""
     quality_mapping = {
         "metadata": {
             "total_images": len(image_paths),
@@ -357,15 +358,9 @@ def create_quality_mapping(image_paths: list, output_dir: str, similarity_thresh
             quality_mapping["images"][img_name]["duplicate_of"] = [os.path.basename(p) for p in duplicate_list]
             quality_mapping["images"][img_name]["duplicate_count"] = len(duplicate_list)
     
-    # Save quality mapping
-    mapping_file = os.path.join(output_dir, QUALITY_MAPPING_FILE)
-    with open(mapping_file, 'w') as f:
-        json.dump(quality_mapping, f, indent=2)
-    
-    logger.info(f"Quality mapping saved to: {mapping_file}")
     return quality_mapping
 
-def process_s3_folder_quality(folder_name, output_dir, similarity_threshold=0.8):
+def process_s3_folder_quality(folder_name, similarity_threshold=0.8):
     """Process quality assessment for a single S3 folder."""
     start_time = time.time()
     
@@ -374,8 +369,6 @@ def process_s3_folder_quality(folder_name, output_dir, similarity_threshold=0.8)
         property_id = folder_name.split("/")[0]
     else:
         property_id = folder_name
-    
-    os.makedirs(output_dir, exist_ok=True)
 
     # List all images in the S3 folder
     image_objects = list_s3_images_in_folder(folder_name)
@@ -398,7 +391,11 @@ def process_s3_folder_quality(folder_name, output_dir, similarity_threshold=0.8)
         return None
     
     # Create quality mapping
-    quality_mapping = create_quality_mapping(image_paths, output_dir, similarity_threshold)
+    quality_mapping = create_quality_mapping(image_paths, similarity_threshold)
+    
+    # Add property information
+    quality_mapping["property_id"] = property_id
+    quality_mapping["folder_name"] = folder_name
     
     # Print quality summary
     total_images = len(image_paths)
@@ -433,7 +430,7 @@ def process_s3_folder_quality(folder_name, output_dir, similarity_threshold=0.8)
     return quality_mapping
 
 def process_all_s3_folders(similarity_threshold=0.8):
-    """Process quality assessment for all S3 folders."""
+    """Process quality assessment for all S3 folders and combine into single JSON."""
     if not authenticate_aws():
         logger.error("Failed to authenticate with AWS. Exiting.")
         return False
@@ -445,28 +442,46 @@ def process_all_s3_folders(similarity_threshold=0.8):
     
     logger.info(f"Found {len(folders)} folders in S3 bucket")
     
+    # Combined quality mapping for all properties
+    combined_quality_mapping = {
+        "metadata": {
+            "total_properties": 0,
+            "total_images": 0,
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "similarity_threshold": similarity_threshold,
+            "version": "1.0"
+        },
+        "properties": {}
+    }
+    
     total_processed = 0
     total_images = 0
     
     for folder in folders:
         logger.info(f"\nProcessing folder: {folder}")
         
-        # Create output directory for this property
-        property_id = folder.split("/")[0] if "/" in folder else folder
-        output_dir = os.path.join("output", property_id)
-        
-        quality_mapping = process_s3_folder_quality(folder, output_dir, similarity_threshold)
+        quality_mapping = process_s3_folder_quality(folder, similarity_threshold)
         
         if quality_mapping:
+            property_id = quality_mapping["property_id"]
+            combined_quality_mapping["properties"][property_id] = quality_mapping
+            combined_quality_mapping["metadata"]["total_properties"] += 1
+            combined_quality_mapping["metadata"]["total_images"] += quality_mapping["metadata"]["total_images"]
             total_processed += 1
             total_images += quality_mapping["metadata"]["total_images"]
             logger.info(f"✓ Successfully processed folder: {folder}")
         else:
             logger.warning(f"⚠ Failed to process folder: {folder}")
     
+    # Save combined quality mapping outside output folder
+    combined_file = QUALITY_MAPPING_FILE
+    with open(combined_file, 'w') as f:
+        json.dump(combined_quality_mapping, f, indent=2)
+    
     logger.info(f"\n🎉 Quality assessment completed!")
-    logger.info(f"📊 Total folders processed: {total_processed}")
+    logger.info(f"📊 Total properties processed: {total_processed}")
     logger.info(f"📊 Total images assessed: {total_images}")
+    logger.info(f"📁 Combined results saved to: {combined_file}")
     
     return total_processed > 0
 
@@ -478,8 +493,6 @@ def main():
     parser.add_argument('--all-folders', action='store_true', help='Process all folders in S3 bucket')
     parser.add_argument('--similarity-threshold', type=float, default=0.8, 
                        help='Similarity threshold for duplicate detection (0.0-1.0, default: 0.8)')
-    parser.add_argument('--output-dir', type=str, default='output', 
-                       help='Output directory (default: output)')
     
     args = parser.parse_args()
     
@@ -489,10 +502,14 @@ def main():
     
     if args.folder:
         # Process specific folder
-        output_dir = os.path.join(args.output_dir, args.folder.split("/")[0])
-        quality_mapping = process_s3_folder_quality(args.folder, output_dir, args.similarity_threshold)
+        quality_mapping = process_s3_folder_quality(args.folder, args.similarity_threshold)
         if quality_mapping:
-            logger.info("✓ Quality assessment completed successfully")
+            # Save single property result
+            property_id = quality_mapping["property_id"]
+            filename = f"quality_mapping_{property_id}.json"
+            with open(filename, 'w') as f:
+                json.dump(quality_mapping, f, indent=2)
+            logger.info(f"✓ Quality assessment completed successfully - saved to {filename}")
         else:
             logger.error("❌ Quality assessment failed")
     elif args.all_folders:

@@ -1,6 +1,8 @@
 #!/bin/bash
-# Simple folder setup script for Colab
-# Run with: !folder-setup
+# Simple folder setup script for Colab or local shell
+# Usage: !folder-setup
+
+set -e
 
 echo "🚀 Starting Colab Folder Setup..."
 echo "=================================================="
@@ -8,7 +10,7 @@ echo "=================================================="
 # Install dependencies
 pip install pandas requests python-dotenv
 
-# Run the Python script
-python colab_folder_setup.py
+# Run the updated Python script with correct arguments
+python colab_folder_setup.py --base-path . --upload-results-file upload_results.csv
 
 echo "✅ Folder setup completed!" 
