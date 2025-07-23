@@ -31,6 +31,7 @@ setup(
             "bucket-manager=src.bucket_manager:main",
             "colab-folder-setup=src.colab_folder_setup:main",
             "quality-assessment=src.quality_assessment:main",
+            "upload-to-s3=src.uploadtoS3:main",
         ],
     },
     classifiers=[
