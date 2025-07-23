@@ -2999,33 +2999,28 @@ def process_s3_folder_no_batching(folder_name, prompt, schemas=None):
 
 def generate_individual_relationship_files_s3(object_files, image_objects, property_cid, property_id, relationship_schema=None, output_dir=None):
     """
-    Generate individual relationship files based on the IPFS relationship schema.
+    Generate simplified relationship files for speed.
     Returns a list of relationship file info for the main relationship file.
     """
     relationship_files = []
     
-    # If no relationship schema provided, fetch it from IPFS
-    if not relationship_schema:
-        relationship_schema = fetch_schema_from_ipfs(RELATIONSHIP_SCHEMA_CID)
-        if not relationship_schema:
-            print("    [!] Warning: Could not fetch relationship schema from IPFS")
-            return relationship_files
+    # Skip IPFS schema fetching for speed - use simplified structure
+    relationship_schema = None
 
     # Get image CIDs from the generated image files
-    image_cids = object_files["images"]  # This is a dict: {image_cid -> filename}
+    image_cids = object_files.get("images", {})  # This is a dict: {image_cid -> filename}
 
-    # Create property -> file relationships for images
+    # Create property -> file relationships for images (simplified)
     for image_cid, filename in image_cids.items():
         rel_filename = f"relationship_property_file_{image_cid}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure
-        relationship_data = create_relationship(
-            {"path": "./property.json"},
-            {"path": f"./{filename}"},
-            "property_has_file",
-            relationship_schema
-        )
+        # Simplified relationship structure
+        relationship_data = {
+            "from": {"path": "./property.json"},
+            "to": {"path": f"./{filename}"},
+            "type": "property_has_file"
+        }
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -3034,20 +3029,18 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
             "filename": rel_filename,
             "type": "property_has_file"
         })
-        print(f"    [✔] Saved: {rel_filename}")
 
-    # Property-level object relationships
-    for obj_type, filename in object_files["property_objects"].items():
+    # Property-level object relationships (simplified)
+    for obj_type, filename in object_files.get("property_objects", {}).items():
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure
-        relationship_data = create_relationship(
-            {"path": "./property.json"},
-            {"path": f"./{filename}"},
-            f"property_has_{obj_type}",
-            relationship_schema
-        )
+        # Simplified relationship structure
+        relationship_data = {
+            "from": {"path": "./property.json"},
+            "to": {"path": f"./{filename}"},
+            "type": f"property_has_{obj_type}"
+        }
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -3056,20 +3049,18 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
             "filename": rel_filename,
             "type": f"property_has_{obj_type}"
         })
-        print(f"    [✔] Saved: {rel_filename}")
 
-    # Layout relationships
-    for layout_key, filename in object_files["layouts"].items():
+    # Layout relationships (simplified)
+    for layout_key, filename in object_files.get("layouts", {}).items():
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure
-        relationship_data = create_relationship(
-            {"path": "./property.json"},
-            {"path": f"./{filename}"},
-            "property_has_layout",
-            relationship_schema
-        )
+        # Simplified relationship structure
+        relationship_data = {
+            "from": {"path": "./property.json"},
+            "to": {"path": f"./{filename}"},
+            "type": "property_has_layout"
+        }
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -3078,53 +3069,26 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
             "filename": rel_filename,
             "type": "property_has_layout"
         })
-        print(f"    [✔] Saved: {rel_filename}")
 
-        # REMOVED: Layout to file relationships as requested
-        # Link layout to all images from the same processing batch
-        # Since the AI analyzed all images together to create this layout,
-        # the layout is related to all images in the batch
-        # for image_cid, image_filename in image_cids.items():
-        #     rel_filename = f"relationship_layout_{layout_key}_file_{image_cid}.json"
-        #     rel_path = os.path.join(output_dir, rel_filename)
-        #     
-        #     # Use IPFS relationship schema structure
-        #     relationship_data = create_relationship(
-        #         {"path": f"./{filename}"},
-        #         {"path": f"./{image_filename}"},
-        #         "layout_has_file",
-        #         relationship_schema
-        #     )
-        #     
-        #     with open(rel_path, "w") as f:
-        #         json.dump(relationship_data, f, indent=2)
-        #     
-        #     relationship_files.append({
-        #         "filename": rel_filename,
-        #         "type": "layout_has_file"
-        #     })
-        #     print(f"    [✔] Created layout->image relationship: {layout_key} -> {image_filename}")
-
-    # Appliance relationships
-    for appliance_key, filename in object_files["appliances"].items():
+    # Appliance relationships (simplified)
+    for appliance_key, filename in object_files.get("appliances", {}).items():
         rel_filename = f"relationship_property_appliance_{appliance_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure (without schema in individual files)
-        relationship_data = create_relationship(
-            {"path": "./property.json"},
-            {"path": f"./{filename}"},
-            "property_has_appliance"
-        )
+        # Simplified relationship structure
+        relationship_data = {
+            "from": {"path": "./property.json"},
+            "to": {"path": f"./{filename}"},
+            "type": "property_has_appliance"
+        }
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
         
         relationship_files.append({
             "filename": rel_filename,
-            "type": "layout_has_appliance"
+            "type": "property_has_appliance"
         })
-        print(f"    [✔] Saved: {rel_filename}")
 
     return relationship_files
 
@@ -3168,36 +3132,23 @@ def create_main_relationship_file(relationship_files, output_dir, property_id):
                 else:
                     existing_relationships[prop_name] = ""
     
-    # Get all possible relationship types from the schema
-    schema_relationships = relationship_schema.get("properties", {}).get("relationships", {}).get("properties", {})
-    print(f"    [DEBUG] Schema relationship types: {list(schema_relationships.keys())}")
-    
-    # Group relationships by type
-    print(f"    [DEBUG] Processing {len(relationship_files)} relationship files")
+    # Simplified relationship processing for speed
     for relationship_file in relationship_files:
         # Get relationship type directly from the type field
         relationship_type = relationship_file.get("type", "unknown")
-        print(f"    [DEBUG] Relationship file: {relationship_file['filename']} -> type: {relationship_type}")
         
-        # Check if this relationship type exists in the schema
-        if relationship_type in schema_relationships:
-            if relationship_type not in existing_relationships.get("relationships", {}):
-                existing_relationships.setdefault("relationships", {})[relationship_type] = []
-            
-            # Add the relationship with correct format based on IPFS schema
-            relationship_entry = {
-                "/": f"./{relationship_file['filename']}"
-            }
-            
-            # Check if this relationship already exists
-            existing_filenames = [rel.get("/", "").replace("./", "") for rel in existing_relationships.get("relationships", {}).get(relationship_type, [])]
-            if relationship_file['filename'] not in existing_filenames:
-                existing_relationships["relationships"][relationship_type].append(relationship_entry)
-                print(f"    [→] Added {relationship_type}: {relationship_file['filename']}")
-            else:
-                print(f"    [→] Relationship already exists: {relationship_file['filename']}")
-        else:
-            print(f"    [!] Warning: Relationship type '{relationship_type}' not found in schema")
+        # Add the relationship with simplified format
+        if relationship_type not in existing_relationships.get("relationships", {}):
+            existing_relationships.setdefault("relationships", {})[relationship_type] = []
+        
+        relationship_entry = {
+            "/": f"./{relationship_file['filename']}"
+        }
+        
+        # Check if this relationship already exists
+        existing_filenames = [rel.get("/", "").replace("./", "") for rel in existing_relationships.get("relationships", {}).get(relationship_type, [])]
+        if relationship_file['filename'] not in existing_filenames:
+            existing_relationships["relationships"][relationship_type].append(relationship_entry)
     
     # Save the updated main relationship file
     with open(filepath, "w") as f:
