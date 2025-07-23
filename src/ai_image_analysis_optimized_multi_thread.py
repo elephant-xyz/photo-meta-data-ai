@@ -18,9 +18,6 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import tempfile
 import logging
 from dotenv import load_dotenv
-import hashlib
-import numpy as np
-import cv2
 
 # Configure logging
 def setup_logging():
@@ -99,8 +96,6 @@ RELATIONSHIP_SCHEMA_CID = "bafkreicaq62gggwbppihgstao2maakafmghjttf73ai53tz5tam2
 
 SCHEMA_FOLDER = "schema"
 OUTPUT_BASE_FOLDER = "output"
-QUALITY_MAPPING_FILE = "quality_mapping.json"
-
 SCHEMA_KEYS = [
     "property", "lot",
     "layout", "structure", "utility", "appliance"
