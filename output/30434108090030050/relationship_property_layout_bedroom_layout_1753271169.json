@@ -1,0 +1,9 @@
+{
+  "from": {
+    "path": "./property.json"
+  },
+  "to": {
+    "path": "./layout_bedroom_layout_1753271169.json"
+  },
+  "type": "property_has_layout"
+}
