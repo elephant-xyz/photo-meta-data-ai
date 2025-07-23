@@ -1,0 +1,371 @@
+{
+  "property_id": "30434108090030050",
+  "layouts": {
+    "total_layouts": 30,
+    "space_types": [
+      "balcony",
+      "garage",
+      "Dining Room",
+      "Kitchen",
+      "bathroom",
+      "living room",
+      "dining room",
+      "Bathroom",
+      "kitchen",
+      "Office",
+      "pantry",
+      "Laundry Room",
+      "Bedroom",
+      "closet",
+      "bedroom",
+      "Foyer",
+      "half bathroom",
+      "entryway",
+      "laundry room",
+      "Primary Bathroom",
+      "breakfast nook",
+      "Living Room",
+      "Primary Bedroom",
+      "office"
+    ],
+    "details": [
+      {
+        "file": "layout_balcony_layout_1753268740.json",
+        "space_type": "balcony",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_garage_layout_1753268783.json",
+        "space_type": "garage",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_dining_room_layout_1753269305.json",
+        "space_type": "Dining Room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_kitchen_layout_1753269305.json",
+        "space_type": "Kitchen",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_bathroom_layout_1753268959.json",
+        "space_type": "bathroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_none_layout_1753269305.json",
+        "space_type": null,
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_none_layout_1753269372.json",
+        "space_type": null,
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_living_room_layout_1753269176.json",
+        "space_type": "living room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_dining_room_layout_1753268959.json",
+        "space_type": "dining room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_bathroom_layout_1753269305.json",
+        "space_type": "Bathroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_kitchen_layout_1753268959.json",
+        "space_type": "kitchen",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_office_layout_1753269305.json",
+        "space_type": "Office",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_pantry_layout_1753268959.json",
+        "space_type": "pantry",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_laundry_room_layout_1753269305.json",
+        "space_type": "Laundry Room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_bedroom_layout_1753269305.json",
+        "space_type": "Bedroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_closet_layout_1753268403.json",
+        "space_type": "closet",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_bedroom_layout_1753268365.json",
+        "space_type": "bedroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_foyer_layout_1753269305.json",
+        "space_type": "Foyer",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_none_layout_1753268740.json",
+        "space_type": null,
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_half_bathroom_layout_1753268959.json",
+        "space_type": "half bathroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_entryway_layout_1753268740.json",
+        "space_type": "entryway",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_laundry_room_layout_1753268994.json",
+        "space_type": "laundry room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_primary_bathroom_layout_1753269305.json",
+        "space_type": "Primary Bathroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_breakfast_nook_layout_1753269176.json",
+        "space_type": "breakfast nook",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_entryway_layout_1753269176.json",
+        "space_type": "entryway",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_living_room_layout_1753269305.json",
+        "space_type": "Living Room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_primary_bedroom_layout_1753269305.json",
+        "space_type": "Primary Bedroom",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_office_layout_1753269176.json",
+        "space_type": "office",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_dining_room_layout_1753269176.json",
+        "space_type": "dining room",
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      },
+      {
+        "file": "layout_none_layout_1753269176.json",
+        "space_type": null,
+        "dimensions": {},
+        "features": [],
+        "appliances": [],
+        "description": ""
+      }
+    ]
+  },
+  "structure": {
+    "file_found": true,
+    "details": {
+      "building_type": "unknown",
+      "construction_material": "unknown",
+      "roof_type": "unknown",
+      "stories": "unknown",
+      "year_built": "unknown",
+      "square_footage": "unknown",
+      "condition": "unknown",
+      "features": []
+    }
+  },
+  "lot": {
+    "file_found": true,
+    "details": {
+      "lot_size": "unknown",
+      "lot_dimensions": "unknown",
+      "landscape_features": [],
+      "outdoor_features": [],
+      "parking": "unknown",
+      "zoning": "unknown"
+    }
+  },
+  "utility": {
+    "file_found": true,
+    "details": {
+      "heating": "unknown",
+      "cooling": "unknown",
+      "electrical": "unknown",
+      "plumbing": "unknown",
+      "internet": "unknown",
+      "security": "unknown",
+      "other_utilities": []
+    }
+  },
+  "appliances": {
+    "total_appliances": 5,
+    "appliance_types": [
+      "coffee maker, toaster",
+      "refrigerator, oven, microwave, toaster",
+      "refrigerator, oven, microwave",
+      "washer and dryer"
+    ],
+    "details": [
+      {
+        "file": "appliance_coffee_maker,_toaster.json",
+        "appliance_type": "coffee maker, toaster",
+        "brand": "unknown",
+        "model": "unknown",
+        "condition": "unknown",
+        "age": "unknown",
+        "features": [],
+        "location": "unknown"
+      },
+      {
+        "file": "appliance_none.json",
+        "appliance_type": null,
+        "brand": "unknown",
+        "model": "unknown",
+        "condition": "unknown",
+        "age": "unknown",
+        "features": [],
+        "location": "unknown"
+      },
+      {
+        "file": "appliance_refrigerator,_oven,_microwave,_toaster.json",
+        "appliance_type": "refrigerator, oven, microwave, toaster",
+        "brand": "unknown",
+        "model": "unknown",
+        "condition": "unknown",
+        "age": "unknown",
+        "features": [],
+        "location": "unknown"
+      },
+      {
+        "file": "appliance_refrigerator,_oven,_microwave.json",
+        "appliance_type": "refrigerator, oven, microwave",
+        "brand": "unknown",
+        "model": "unknown",
+        "condition": "unknown",
+        "age": "unknown",
+        "features": [],
+        "location": "unknown"
+      },
+      {
+        "file": "appliance_washer_and_dryer.json",
+        "appliance_type": "washer and dryer",
+        "brand": "unknown",
+        "model": "unknown",
+        "condition": "unknown",
+        "age": "unknown",
+        "features": [],
+        "location": "unknown"
+      }
+    ]
+  }
+}

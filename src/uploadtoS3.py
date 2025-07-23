@@ -127,7 +127,7 @@ class PropertyImagesUploader:
         """Upload all images for a specific property"""
         if s3_bucket is None:
             s3_bucket = self.bucket_name
-        
+
         if images_dir is None:
             images_dir = os.getenv('IMAGE_FOLDER_NAME', 'images')
 

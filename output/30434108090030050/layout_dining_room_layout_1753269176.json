@@ -1,0 +1,32 @@
+{
+  "cabinet_style": "modern",
+  "clutter_level": "minimal",
+  "condition_issues": null,
+  "countertop_material": "granite",
+  "decor_elements": "modern dining set",
+  "design_style": "contemporary",
+  "fixture_finish_quality": "high",
+  "floor_level": "ground",
+  "flooring_material_type": "tile",
+  "flooring_wear": "good",
+  "furnished": "fully",
+  "has_windows": true,
+  "is_exterior": false,
+  "is_finished": true,
+  "lighting_features": "modern pendant light",
+  "natural_light_quality": "good",
+  "paint_condition": "good",
+  "request_identifier": null,
+  "safety_features": null,
+  "size_square_feet": 0,
+  "source_http_request": {
+    "appliances": []
+  },
+  "space_type": "dining room",
+  "view_type": "interior",
+  "visible_damage": null,
+  "window_design_type": "sliding",
+  "window_material_type": "glass",
+  "window_treatment_type": "blinds",
+  "appliances": []
+}

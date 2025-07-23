@@ -70,11 +70,11 @@ export S3_BUCKET_NAME='your-bucket-name'
 
 ### Recent Improvements
 
-**Timeout and Performance Fixes:**
-- ✅ Process 10 images at once in single API calls (no parallel processing)
-- ✅ Increased timeout from 120s to 600s maximum per API call
+**Speed and Performance Optimizations:**
+- ✅ Process 3 images per batch with parallel processing (3 workers)
+- ✅ Reduced timeout to 180s maximum per API call for faster processing
 - ✅ Added 30-minute overall timeout for entire processing
-- ✅ Better error handling to continue processing even if API calls fail
+- ✅ Better error handling to continue processing even if batches fail
 - ✅ Improved retry logic with exponential backoff
 - ✅ All logs now go to files only (no console output)
 

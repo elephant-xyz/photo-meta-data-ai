@@ -1,0 +1,12 @@
+{
+  "type": "relationship",
+  "properties": {
+    "from": {
+      "path": "./property.json"
+    },
+    "to": {
+      "path": "./layout_bathroom_layout_1753269305.json"
+    },
+    "type": "property_has_layout"
+  }
+}

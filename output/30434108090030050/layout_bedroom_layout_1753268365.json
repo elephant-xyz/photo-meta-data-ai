@@ -1,0 +1,38 @@
+{
+  "cabinet_style": null,
+  "clutter_level": "low",
+  "condition_issues": null,
+  "countertop_material": null,
+  "decor_elements": [
+    "ceiling fan",
+    "red lamp",
+    "mirrored closet doors",
+    "curtains",
+    "area rug"
+  ],
+  "design_style": "modern",
+  "fixture_finish_quality": "good",
+  "floor_level": "upper",
+  "flooring_material_type": "carpet",
+  "flooring_wear": "good",
+  "furnished": "yes",
+  "has_windows": true,
+  "is_exterior": false,
+  "is_finished": true,
+  "lighting_features": "ceiling light",
+  "natural_light_quality": "good",
+  "paint_condition": "good",
+  "request_identifier": null,
+  "safety_features": null,
+  "size_square_feet": null,
+  "source_http_request": {
+    "appliances": []
+  },
+  "space_type": "bedroom",
+  "view_type": "exterior",
+  "visible_damage": null,
+  "window_design_type": "arched",
+  "window_material_type": "glass",
+  "window_treatment_type": "blinds",
+  "appliances": []
+}

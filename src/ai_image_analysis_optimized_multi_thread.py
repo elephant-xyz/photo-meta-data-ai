@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import base64
 import pandas as pd
@@ -64,7 +65,14 @@ load_environment()
 logger = setup_logging()
 
 # --- CONFIG ---
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    logger.error("❌ OPENAI_API_KEY not found in environment variables")
+    sys.exit(1)
+else:
+    logger.info(f"✓ OpenAI API key loaded: {openai_api_key[:10]}...")
+
+client = OpenAI(api_key=openai_api_key)
 
 # S3 Configuration
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
@@ -76,12 +84,15 @@ IPFS_SCHEMA_CIDS = {
     "layout": "bafkreihrwupbrldaxwm2qcuryrug5pwplxmp4ckdo7whqz52zwuw5j7l2q",
     "structure": "bafkreid2wa56cecrm6ge4slmsm56xqy6j3gqlhldrljmruh64ams542xxe",
     "utility": "bafkreihuoaw6fm5abblivzgepkxkhduc5mivhho4rcidp5lvgb7fhyuide",
-    "appliance": "bafkreiedrjr6rrpgtp2goilootdhxdl6up3ohstm42x6tfh3wayndy5oxu",
-    "file": "bafkreihug7qtvmblmpgdox7ex476inddz4u365gl33epmqoatiecqjveqq"
+    "appliance": "bafkreieew4njulmeecnm3kah7w43eiali6lre5o45ttiyaqfjhb3ecu2mq",
+    "file": "bafkreihug7qtvmblmpgdox7ex476inddz4u365gl33epmqoatiecqjveqq",
+    "property": "bafkreih6x76aedhs7lqjk5uq4zskmfs33agku62b4flpq5s5pa6aek2gga"
+
 }
 
 # Relationship schema CID
-RELATIONSHIP_SCHEMA_CID = "bafkreifpjvcslz5hntsetlbic7kabfgzdpijdeuvgbhyismbgoj7x6nt7u"
+RELATIONSHIP_SCHEMA_CID = "bafkreicaq62gggwbppihgstao2maakafmghjttf73ai53tz5tam2cixrvu"
+
 
 SCHEMA_FOLDER = "schema"
 OUTPUT_BASE_FOLDER = "output"
@@ -324,6 +335,7 @@ def list_s3_images_in_property(folder_name):
     except Exception as e:
         print(f"Error listing images in property {folder_name}: {e}")
         return []
+    
 
 def download_s3_image_to_temp(s3_key):
     """Download an S3 image to a temporary file"""
@@ -387,14 +399,11 @@ def create_relationship(from_cid, to_cid, relationship_type, relationship_schema
             "schema": relationship_schema
         }
     else:
-        # Fallback to default format
+        # For individual relationship files, use simple format with direct fields
         return {
-            "type": "relationship",
-            "properties": {
-                "from": from_cid,
-                "to": to_cid,
-                "type": relationship_type
-            }
+            "from": from_cid,
+            "to": to_cid,
+            "type": relationship_type
         }
 
 
@@ -458,10 +467,11 @@ def generate_smart_relationships_from_batch(batch_data, image_paths, property_ci
         layout_cid = generate_placeholder_cid("layout", f"{property_cid}_layout_{layout_info['key']}_{i}")
         relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout"))
 
+        # REMOVED: Layout to image relationships as requested
         # Link layout to ALL images in the batch (since we can't determine which specific image shows this layout)
         # In a more sophisticated system, you might analyze image content to determine this
-        for image_info in image_cids.values():
-            relationships.append(create_relationship(layout_cid, image_info["cid"], "layout_has_image"))
+        # for image_info in image_cids.values():
+        #     relationships.append(create_relationship(layout_cid, image_info["cid"], "layout_has_image"))
 
         # Handle appliances in this layout
         layout_data = layout_info["output"]
@@ -523,7 +533,8 @@ def generate_relationships_per_image(extracted_data, image_name, property_cid, i
             # Create layout CID specific to this image
             layout_cid = generate_placeholder_cid("layout", f"{property_cid}_img{image_index}_layout_{i}")
             relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout"))
-            relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image"))
+            # REMOVED: Layout to image relationships as requested
+            # relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image"))
 
             # Handle appliances in this layout
             layout_appliances = layout.get("appliances", [])
@@ -706,26 +717,18 @@ IMPORTANT LAYOUT DETECTION AND GROUPING RULES:
 - All images in this batch are from the same property/location: {folder_name}
 - CAREFULLY ANALYZE EACH IMAGE to determine if it belongs to the same room/layout or a different one
 - For multiple rooms of the same type (e.g., multiple bedrooms), create SEPARATE layout entries:
-  * If images show different bedrooms, create separate layout entries (layout_bedroom_1, layout_bedroom_2, etc.)
+  * If images show different bedrooms, create separate layout entries
   * If images show different angles of the SAME bedroom, combine them into ONE layout entry
 - Use these clues to determine if images are from the same room:
   * Wall color, flooring, furniture arrangement, window placement, room size
   * Different furniture, different wall colors, different layouts = different rooms
   * Same furniture, same wall colors, same layout = same room
-- For each unique room/layout, create a separate layout entry with descriptive identifiers:
-  * layout_bedroom_master (for master bedroom)
-  * layout_bedroom_guest (for guest bedroom)
-  * layout_bedroom_kids (for kids bedroom)
-  * layout_kitchen_main (for main kitchen)
-  * layout_bathroom_master (for master bathroom)
-  * layout_bathroom_guest (for guest bathroom)
-- ADD THESE FIELDS TO EACH LAYOUT:
-  * "layout_identifier": A unique identifier for this specific room (e.g., "master_bedroom", "guest_bedroom_1", "kitchen_main")
-  * "room_description": Brief description of the room's distinguishing features
-  * "room_name": Human-readable name for the room
+- For each unique room/layout, create a separate layout entry
+- Use the exact field names and structure from the IPFS layout schema
+- Follow the schema properties exactly as defined
 - Appliances found in the same room should be grouped under the same layout
 - Structure and lot information should be consistent across all images from the same property
-- Use consistent space_type names but differentiate with descriptive identifiers
+- Use consistent space_type names but differentiate with descriptive room names
 """.format(folder_name=folder_name or "this property")
 
     # Build schema-specific instructions
@@ -744,35 +747,129 @@ IMPORTANT LAYOUT DETECTION AND GROUPING RULES:
                 # Add specific instructions for layout schema
                 if schema_key == "layout":
                     schema_instructions += """
-LAYOUT SCHEMA ADDITIONAL FIELDS:
-- layout_identifier: string - Unique identifier for this specific room (e.g., "master_bedroom", "guest_bedroom_1")
-- room_description: string - Brief description of room's distinguishing features
-- room_name: string - Human-readable name for the room (e.g., "Master Bedroom", "Guest Bedroom 1")
+LAYOUT SCHEMA FIELDS:
+- Follow the exact field structure from the IPFS schema
+- Use the fields defined in the schema properties
 """
 
-    prompt = f"""Extract real estate output as JSON with keys: {','.join(SCHEMA_KEYS)}.
-
-{categorization_instructions}
+    # Use IPFS schemas to build the prompt
+    if schemas and isinstance(schemas, dict):
+        # Build schema-specific instructions from IPFS schemas
+        schema_instructions = ""
+        example_structure = {}
+        
+        for schema_key, schema_data in schemas.items():
+            if schema_data and isinstance(schema_data, dict) and schema_key != "relationship":
+                properties = schema_data.get('properties', {})
+                if properties:
+                    schema_instructions += f"\n{schema_key.upper()} SCHEMA:\n"
+                    example_structure[schema_key] = {}
+                    
+                    for prop_name, prop_info in properties.items():
+                        if isinstance(prop_info, dict):
+                            description = prop_info.get('description', '')
+                            prop_type = prop_info.get('type', '')
+                            schema_instructions += f"- {prop_name}: {prop_type} - {description}\n"
+                            
+                            # Add example value based on type
+                            if prop_type == "string":
+                                example_structure[schema_key][prop_name] = "example_value"
+                            elif prop_type == "array":
+                                example_structure[schema_key][prop_name] = ["example_item"]
+                            elif prop_type == "number":
+                                example_structure[schema_key][prop_name] = 0
+                            elif prop_type == "boolean":
+                                example_structure[schema_key][prop_name] = True
+        
+        prompt = f"""Analyze these real estate images and return detailed JSON following the IPFS schemas:
 
 {schema_instructions}
 
-Rules:
-- layout: interior/exterior spaces (Kitchen, Bedroom, Balcony, etc.) with space_type
-  * IMPORTANT: Create separate layout entries for different rooms of the same type
-  * Include layout_identifier, room_description, and room_name fields
-  * Group images of the same room together, separate different rooms
-- structure: architectural features (roof, materials, style, condition)  
-- utility: visible systems (HVAC, solar, electrical)
-- appliance: visible appliances with type, finish, condition
-- lot: size, driveway material/condition, fencing, landscaping, views, condition issues
-- Only tag what's visible. Use {{}} or [] if none found.
-- IMPORTANT: Since all images are from the same property, ensure consistent categorization
-- CRITICAL: Analyze each image carefully to determine if it belongs to the same room or a different room
-- Follow the exact schema structure provided above
+CRITICAL SCHEMA RULES:
+- LAYOUT schema: Only include room/layout related fields (space_type, room_name, room_description, etc.)
+- STRUCTURE schema: Only include building structure fields (roof_type, construction_material, etc.)
+- APPLIANCE schema: Only include appliance fields (appliance_type, finish, condition, etc.)
+- UTILITY schema: Only include utility fields (utility_type, condition, etc.)
+- LOT schema: Only include lot/landscape fields (size, driveway_material, landscaping, etc.)
+- DO NOT mix fields between schemas (e.g., don't put pool fields in layout schema)
 
-Schema: {json.dumps(combined_schema, separators=(',', ':'))}
+ANALYSIS INSTRUCTIONS:
+- Look for specific features in each image: furniture, appliances, room types, building materials, utilities
+- For layouts: Identify room types (bedroom, kitchen, bathroom, living room, etc.) and describe what you see
+- For structure: Look for roof types, construction materials, architectural style, exterior features
+- For appliances: Identify any visible appliances (refrigerator, stove, washer, dryer, etc.) and their condition
+- For utilities: Look for HVAC systems, electrical panels, plumbing fixtures, etc.
+- For lot: Identify landscaping, driveway materials, lot size indicators, outdoor features
 
-Return JSON only."""
+DETAILED ANALYSIS RULES:
+- Examine each image carefully for visible features
+- Describe specific details you can see (colors, materials, styles, conditions)
+- If you see multiple rooms of the same type, create separate layout entries
+- Be specific about what you observe rather than making assumptions
+- Include actual visible features, not generic descriptions
+- IMPORTANT: Even if you don't see certain features (like lot, structure, utilities, appliances), still include those keys with empty arrays or objects to maintain schema structure
+- IMPORTANT: Use ONLY the fields defined in each IPFS schema - do not add fields that aren't in the schema
+
+Example structure based on IPFS schemas:
+{json.dumps(example_structure, indent=2)}
+
+Return ONLY the JSON object with detailed analysis of visible features. Include ALL schema keys even if empty."""
+    else:
+        # Fallback to basic structure if IPFS schemas not available
+        prompt = f"""Analyze these real estate images and return detailed JSON with the following structure:
+
+{{
+  "layout": [
+    {{
+      "space_type": "kitchen",
+      "room_name": "Kitchen",
+      "room_description": "Modern kitchen with granite countertops"
+    }}
+  ],
+  "structure": {{
+    "roof_type": "shingle",
+    "construction_material": "wood",
+    "style": "modern"
+  }},
+  "utility": [
+    {{
+      "utility_type": "HVAC",
+      "condition": "good"
+    }}
+  ],
+  "appliance": [
+    {{
+      "appliance_type": "refrigerator",
+      "finish": "stainless steel",
+      "condition": "excellent"
+    }}
+  ],
+  "lot": {{
+    "size": "5000 sq ft",
+    "driveway_material": "concrete",
+    "landscaping": "mature trees"
+  }}
+}}
+
+DETAILED ANALYSIS INSTRUCTIONS:
+- Look for specific features in each image: furniture, appliances, room types, building materials, utilities
+- For layouts: Identify room types (bedroom, kitchen, bathroom, living room, etc.) and describe what you see
+- For structure: Look for roof types, construction materials, architectural style, exterior features
+- For appliances: Identify any visible appliances (refrigerator, stove, washer, dryer, etc.) and their condition
+- For utilities: Look for HVAC systems, electrical panels, plumbing fixtures, etc.
+- For lot: Identify landscaping, driveway materials, lot size indicators, outdoor features
+
+ANALYSIS RULES:
+- Examine each image carefully for visible features
+- Describe specific details you can see (colors, materials, styles, conditions)
+- If you see multiple rooms of the same type, create separate layout entries
+- Be specific about what you observe rather than making assumptions
+- Include actual visible features, not generic descriptions
+- IMPORTANT: Even if you don't see certain features (like lot, structure, utilities, appliances), still include those keys with empty arrays or objects to maintain schema structure
+- Only include what's visible in the images
+- Use empty arrays [] if no items found
+
+Return ONLY the JSON object with detailed analysis of visible features. Include ALL schema keys even if empty."""
 
     return prompt
 
@@ -790,7 +887,7 @@ def try_parse_json(text):
             return None
 
 
-def call_openai_optimized_s3(image_objects, prompt):
+def call_openai_optimized_s3(image_objects, prompt, schemas=None):
     """Optimized OpenAI call for local images with retry logic and better error handling."""
     global TOTAL_IMAGES_PROCESSED, TOTAL_PROMPT_TOKENS, TOTAL_COMPLETION_TOKENS, TOTAL_COST
 
@@ -799,22 +896,22 @@ def call_openai_optimized_s3(image_objects, prompt):
 
     for attempt in range(max_retries):
         try:
-            images_in_batch = len(image_objects[:10])
+            images_in_batch = len(image_objects)
 
             # Thread-safe update of global stats
             with stats_lock:
                 TOTAL_IMAGES_PROCESSED += images_in_batch
 
             messages = [
-                {"role": "system", "content": "Real estate image analyzer. Return JSON only."},
+                {"role": "system", "content": "You are a detailed real estate image analyzer. Your job is to carefully examine each image and provide specific, detailed analysis of visible property features. Be thorough and descriptive in your analysis. Return comprehensive JSON data about all visible property features."},
                 {"role": "user", "content": [
                     {"type": "text", "text": prompt}
                 ]}
             ]
 
-            for i, image_obj in enumerate(image_objects[:10]):
+            for i, image_obj in enumerate(image_objects):
                 # Handle both local files and S3 files
-                if image_obj['key'].startswith('s3://') or '/' in image_obj['key']:
+                if image_obj['key'].startswith('s3://') or os.path.exists(image_obj['key']):
                     # Local file path
                     image_b64 = encode_image_original(image_obj['key'])
                 else:
@@ -828,8 +925,8 @@ def call_openai_optimized_s3(image_objects, prompt):
                     })
 
             # Calculate dynamic timeout based on batch size
-            batch_size = len(image_objects[:10])
-            dynamic_timeout = min(600, 120 + (batch_size * 30))  # 120s base + 30s per image, max 600s
+            batch_size = len(image_objects)
+            dynamic_timeout = min(180, 30 + (batch_size * 15))  # 30s base + 15s per image, max 180s
             
             try:
                 response = client.chat.completions.create(
@@ -859,14 +956,100 @@ def call_openai_optimized_s3(image_objects, prompt):
                 TOTAL_COST += total_cost
 
             result = try_parse_json(response.choices[0].message.content)
+            if result is None:
+                print(f"    [DEBUG] Failed to parse JSON from OpenAI response")
+                print(f"    [DEBUG] Response content: {response.choices[0].message.content[:200]}...")
+            else:
+                # Debug: Show what the AI actually returned
+                print(f"    [DEBUG] AI Response: {json.dumps(result, indent=2)[:500]}...")
+                
+                # Validate that result has the expected schema keys from IPFS
+                if schemas and isinstance(schemas, dict):
+                    expected_keys = [key for key in schemas.keys() if key != "relationship"]
+                    missing_keys = [key for key in expected_keys if key not in result]
+                    if missing_keys:
+                        print(f"    [DEBUG] Missing IPFS schema keys: {missing_keys}")
+                        # Add missing keys with appropriate default values
+                        for key in missing_keys:
+                            schema_data = schemas.get(key, {})
+                            if schema_data and isinstance(schema_data, dict):
+                                # Check if it should be an array or object based on schema
+                                if schema_data.get('type') == 'array':
+                                    result[key] = []
+                                else:
+                                    result[key] = {}
+                            else:
+                                # Default to array for most schemas
+                                result[key] = []
+                    print(f"    [DEBUG] Generated JSON structure: {list(result.keys())}")
+                    
+                    # Validate schema field compliance
+                    for schema_key, schema_data in schemas.items():
+                        if schema_key != "relationship" and schema_key in result:
+                            schema_properties = schema_data.get("properties", {})
+                            if schema_properties:
+                                # Check if result contains fields not in schema
+                                invalid_fields = []
+                                if isinstance(result[schema_key], dict):
+                                    for field in result[schema_key].keys():
+                                        if field not in schema_properties:
+                                            invalid_fields.append(field)
+                                elif isinstance(result[schema_key], list) and result[schema_key]:
+                                    # Check first item in array
+                                    if isinstance(result[schema_key][0], dict):
+                                        for field in result[schema_key][0].keys():
+                                            if field not in schema_properties:
+                                                invalid_fields.append(field)
+                                
+                                if invalid_fields:
+                                    print(f"    [DEBUG] Invalid fields in {schema_key}: {invalid_fields}")
+                                    # Remove invalid fields
+                                    if isinstance(result[schema_key], dict):
+                                        for field in invalid_fields:
+                                            result[schema_key].pop(field, None)
+                                    elif isinstance(result[schema_key], list) and result[schema_key]:
+                                        for item in result[schema_key]:
+                                            if isinstance(item, dict):
+                                                for field in invalid_fields:
+                                                    item.pop(field, None)
+                                        
+                                        # Also remove any fields that don't belong in layout schema
+                                        layout_schema_properties = schema_data.get("properties", {})
+                                        if layout_schema_properties:
+                                            for field in list(result[schema_key].keys()) if isinstance(result[schema_key], dict) else []:
+                                                if field not in layout_schema_properties:
+                                                    result[schema_key].pop(field, None)
+                                                    print(f"    [DEBUG] Removed invalid field '{field}' from layout")
+                                            if isinstance(result[schema_key], list) and result[schema_key]:
+                                                for item in result[schema_key]:
+                                                    if isinstance(item, dict):
+                                                        for field in list(item.keys()):
+                                                            if field not in layout_schema_properties:
+                                                                item.pop(field, None)
+                                                                print(f"    [DEBUG] Removed invalid field '{field}' from layout item")
+                else:
+                    # Fallback validation
+                    expected_keys = ['layout', 'structure', 'utility', 'appliance', 'lot']
+                    missing_keys = [key for key in expected_keys if key not in result]
+                    if missing_keys:
+                        print(f"    [DEBUG] Missing schema keys: {missing_keys}")
+                        for key in missing_keys:
+                            if key in ['layout', 'utility', 'appliance']:
+                                result[key] = []
+                            else:
+                                result[key] = {}
+                    print(f"    [DEBUG] Generated JSON structure: {list(result.keys())}")
             return result, total_cost
 
         except Exception as e:
+            print(f"    [DEBUG] API call attempt {attempt + 1} failed: {e}")
             if attempt < max_retries - 1:
                 import time
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Exponential backoff
+                print(f"    [DEBUG] Retrying in {retry_delay} seconds...")
             else:
+                print(f"    [DEBUG] All {max_retries} attempts failed")
                 return None, 0.0
 
     return None, 0.0
@@ -937,31 +1120,22 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
     """Generate individual JSON files for each S3 image using the file schema from IPFS."""
     image_files = {}
     
-    # Create images subdirectory in output folder
-    images_dir = os.path.join(output_dir, "images")
-    os.makedirs(images_dir, exist_ok=True)
+    # Images will be saved in the same folder as JSON files
     
     # Fetch file schema from IPFS
     file_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["file"])
     if not file_schema:
-        logger.warning("Could not fetch file schema from IPFS, using default")
-        file_schema = {
-            "type": "file",
-            "properties": {
-                "filename": {"type": "string"},
-                "file_path": {"type": "string"},
-                "file_type": {"type": "string"},
-                "image_format": {"type": "string"}
-            }
-        }
+        logger.error(f"Could not fetch file schema from IPFS CID {IPFS_SCHEMA_CIDS['file']}")
+        logger.error("Exiting due to missing file schema")
+        sys.exit(1)
     
     for i, image_obj in enumerate(image_objects):
         # Generate a unique CID for the image
         image_name = image_obj['name']
         image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
         
-        # Download image from S3 to output folder
-        image_dest_path = os.path.join(images_dir, image_name)
+        # Download image from S3 to output folder (same folder as JSON files)
+        image_dest_path = os.path.join(output_dir, image_name)
         try:
             s3_key = image_obj['key']
             s3_client.download_file(S3_BUCKET_NAME, s3_key, image_dest_path)
@@ -971,16 +1145,38 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
             continue
         
         # Create image JSON using the file schema from IPFS with relative path
-        relative_image_path = os.path.join("images", image_name)
-        image_data = {
-            "type": "file",
-            "properties": {
-                "filename": image_name,
-                "file_path": relative_image_path,  # Use relative path
-                "file_type": "image",
-                "image_format": image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
-            }
-        }
+        relative_image_path = f"./{image_name}"
+        
+        # Use IPFS schema structure directly (no type/properties wrapper)
+        image_data = {}
+        
+        # Populate properties based on IPFS schema
+        if file_schema and isinstance(file_schema, dict):
+            schema_properties = file_schema.get("properties", {})
+            if schema_properties:
+                for prop_name, prop_info in schema_properties.items():
+                    if isinstance(prop_info, dict):
+                        prop_type = prop_info.get("type", "string")
+                        
+                        # Set appropriate values based on property name
+                        if prop_name == "ipfs_url":
+                            image_data[prop_name] = relative_image_path
+                        elif prop_name == "name":
+                            image_data[prop_name] = image_name
+                        elif prop_name == "file_format":
+                            image_data[prop_name] = image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
+                        elif prop_name == "document_type":
+                            image_data[prop_name] = "image"
+                        else:
+                            # Set default values based on type
+                            if prop_type == "string":
+                                image_data[prop_name] = ""
+                            elif prop_type == "number":
+                                image_data[prop_name] = 0
+                            elif prop_type == "boolean":
+                                image_data[prop_name] = False
+                            else:
+                                image_data[prop_name] = None
         
         # Save individual image file
         filename = f"{image_cid}.json"
@@ -999,31 +1195,22 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
     """Generate individual JSON files for each image using the file schema from IPFS."""
     image_files = {}
     
-    # Create images subdirectory in output folder
-    images_dir = os.path.join(output_dir, "images")
-    os.makedirs(images_dir, exist_ok=True)
+    # Images will be saved in the same folder as JSON files
     
     # Fetch file schema from IPFS
     file_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["file"])
     if not file_schema:
-        logger.warning("Could not fetch file schema from IPFS, using default")
-        file_schema = {
-            "type": "file",
-            "properties": {
-                "filename": {"type": "string"},
-                "file_path": {"type": "string"},
-                "file_type": {"type": "string"},
-                "image_format": {"type": "string"}
-            }
-        }
+        logger.error(f"Could not fetch file schema from IPFS CID {IPFS_SCHEMA_CIDS['file']}")
+        logger.error("Exiting due to missing file schema")
+        sys.exit(1)
     
     for i, image_path in enumerate(image_paths):
         # Generate a unique CID for the image
         image_name = os.path.basename(image_path)
         image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
         
-        # Copy image to output folder
-        image_dest_path = os.path.join(images_dir, image_name)
+        # Copy image to output folder (same folder as JSON files)
+        image_dest_path = os.path.join(output_dir, image_name)
         try:
             import shutil
             shutil.copy2(image_path, image_dest_path)
@@ -1033,16 +1220,38 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
             continue
         
         # Create image JSON using the file schema from IPFS with relative path
-        relative_image_path = os.path.join("images", image_name)
-        image_data = {
-            "type": "file",
-            "properties": {
-                "filename": image_name,
-                "file_path": relative_image_path,  # Use relative path
-                "file_type": "image",
-                "image_format": image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
-            }
-        }
+        relative_image_path = f"./{image_name}"
+        
+        # Use IPFS schema structure directly (no type/properties wrapper)
+        image_data = {}
+        
+        # Populate properties based on IPFS schema
+        if file_schema and isinstance(file_schema, dict):
+            schema_properties = file_schema.get("properties", {})
+            if schema_properties:
+                for prop_name, prop_info in schema_properties.items():
+                    if isinstance(prop_info, dict):
+                        prop_type = prop_info.get("type", "string")
+                        
+                        # Set appropriate values based on property name
+                        if prop_name == "ipfs_url":
+                            image_data[prop_name] = relative_image_path
+                        elif prop_name == "name":
+                            image_data[prop_name] = image_name
+                        elif prop_name == "file_format":
+                            image_data[prop_name] = image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
+                        elif prop_name == "document_type":
+                            image_data[prop_name] = "image"
+                        else:
+                            # Set default values based on type
+                            if prop_type == "string":
+                                image_data[prop_name] = ""
+                            elif prop_type == "number":
+                                image_data[prop_name] = 0
+                            elif prop_type == "boolean":
+                                image_data[prop_name] = False
+                            else:
+                                image_data[prop_name] = None
         
         # Save individual image file
         filename = f"{image_cid}.json"
@@ -1324,9 +1533,10 @@ def generate_relationships_from_object_files_s3(object_files, image_objects, pro
         layout_cid = filename.replace(".json", "")
         relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout", relationship_schema))
 
+        # REMOVED: Layout to image relationships as requested
         # Link layout to all images in batch
-        for image_cid in image_cids.keys():
-            relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image", relationship_schema))
+        # for image_cid in image_cids.keys():
+        #     relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image", relationship_schema))
 
     # Appliance relationships using filenames as CIDs
     for appliance_key, filename in object_files["appliances"].items():
@@ -1378,9 +1588,10 @@ def generate_relationships_from_object_files(object_files, image_paths, property
         layout_cid = filename.replace(".json", "")
         relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout"))
 
+        # REMOVED: Layout to image relationships as requested
         # Link layout to all images in batch
-        for image_cid in image_cids.keys():
-            relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image"))
+        # for image_cid in image_cids.keys():
+        #     relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image"))
 
     # Appliance relationships using filenames as CIDs
     for appliance_key, filename in object_files["appliances"].items():
@@ -1618,22 +1829,52 @@ def merge_lot_data(existing, new):
 
 
 def merge_utility_data(existing, new):
-    """Merge utility data, combining arrays."""
-    if isinstance(existing, list) and isinstance(new, list):
-        # Combine lists, removing duplicates
-        return list(set(existing + new))
-    elif isinstance(existing, dict) and isinstance(new, dict):
+    """Merge utility data, combining objects."""
+    # Utility should be an object, not an array
+    if isinstance(existing, dict) and isinstance(new, dict):
         # Merge dictionaries
         merged = existing.copy()
         for key, value in new.items():
             if key in merged:
                 if isinstance(value, list) and isinstance(merged[key], list):
-                    merged[key] = list(set(merged[key] + value))
+                    # Handle list merging with deduplication
+                    combined = merged[key] + value
+                    unique_items = []
+                    seen_items = set()
+                    
+                    for item in combined:
+                        if isinstance(item, dict):
+                            item_str = json.dumps(item, sort_keys=True)
+                            if item_str not in seen_items:
+                                unique_items.append(item)
+                                seen_items.add(item_str)
+                        else:
+                            if item not in seen_items:
+                                unique_items.append(item)
+                                seen_items.add(item)
+                    
+                    merged[key] = unique_items
                 else:
-                    merged[key] = value
+                    # For non-list values, prefer non-null values
+                    if value is not None:
+                        merged[key] = value
             else:
                 merged[key] = value
         return merged
+    elif isinstance(existing, list) and isinstance(new, list):
+        # If both are lists, convert to object format
+        # Take the first item as the base object
+        base_obj = existing[0] if existing else {}
+        new_obj = new[0] if new else {}
+        return merge_utility_data(base_obj, new_obj)
+    elif isinstance(existing, list):
+        # Convert existing list to object
+        base_obj = existing[0] if existing else {}
+        return merge_utility_data(base_obj, new)
+    elif isinstance(new, list):
+        # Convert new list to object
+        new_obj = new[0] if new else {}
+        return merge_utility_data(existing, new_obj)
     else:
         # If types don't match, return the new data
         return new
@@ -1643,8 +1884,41 @@ def merge_layout_data(existing, new):
     """Merge layout data, combining properties and appliances."""
     merged = existing.copy()
     
+    # Clean both existing and new data by removing invalid fields
+    def clean_layout_data(data):
+        if not isinstance(data, dict):
+            return data
+        
+        cleaned = data.copy()
+        
+        # Remove pool-related fields from layout
+        pool_fields = ["pool_condition", "pool_equipment", "pool_type", "spa_type", "appliances", "pool_surface_type", "pool_water_quality"]
+        for field in pool_fields:
+            if field in cleaned:
+                cleaned.pop(field, None)
+                print(f"    [DEBUG] Removed pool field '{field}' from layout during merge")
+        
+        # Also remove any fields that don't belong in layout schema
+        # Fetch layout schema from IPFS to validate fields
+        layout_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["layout"])
+        if layout_schema and isinstance(layout_schema, dict):
+            layout_schema_properties = layout_schema.get("properties", {})
+            if layout_schema_properties:
+                for field in list(cleaned.keys()):
+                    if field not in layout_schema_properties:
+                        cleaned.pop(field, None)
+                        print(f"    [DEBUG] Removed invalid field '{field}' from layout during merge")
+        
+        return cleaned
+    
+    # Clean the data before merging
+    cleaned_existing = clean_layout_data(existing)
+    cleaned_new = clean_layout_data(new)
+    
+    merged = cleaned_existing.copy()
+    
     # Merge basic properties
-    for key, value in new.items():
+    for key, value in cleaned_new.items():
         if key == "appliances":
             # Handle appliances separately
             continue
@@ -1983,10 +2257,17 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
     if "utilities" in result and result["utilities"]:
         filename = "utility.json"
         filepath = os.path.join(output_dir, filename)
+        
+        # Ensure utility is saved as an object, not an array
+        utility_data = result["utilities"]
+        if isinstance(utility_data, list) and len(utility_data) > 0:
+            # Convert array to object by taking the first item
+            utility_data = utility_data[0]
+        
         with open(filepath, "w") as f:
-            json.dump(result["utilities"], f, indent=2)
+            json.dump(utility_data, f, indent=2)
         grouped_files["property_objects"]["utility"] = filename
-        print(f"    [✔] Saved: {filename} ({len(result['utilities'])} utilities)")
+        print(f"    [✔] Saved: {filename} (utility object)")
 
 
 
@@ -2056,9 +2337,10 @@ def generate_relationships_from_grouped_files_s3(grouped_files, image_objects, p
         layout_cid = filename.replace(".json", "")
         relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout", relationship_schema))
 
+        # REMOVED: Layout to image relationships as requested
         # Link layout to all images in batch
-        for image_cid in image_cids.keys():
-            relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image", relationship_schema))
+        # for image_cid in image_cids.keys():
+        #     relationships.append(create_relationship(layout_cid, image_cid, "layout_has_image", relationship_schema))
 
     # Appliance relationships using grouped filenames as CIDs
     for appliance_key, filename in grouped_files["appliances"].items():
@@ -2389,6 +2671,10 @@ def main():
     for schema_name, schema_data in schemas.items():
         if schema_data:
             logger.info(f"✓ Loaded {schema_name} schema with {len(schema_data.get('properties', {}))} properties")
+            # Log a sample of the schema structure
+            if schema_data.get('properties'):
+                sample_props = list(schema_data['properties'].keys())[:3]
+                logger.info(f"  Sample properties: {sample_props}")
         else:
             logger.warning(f"⚠️  {schema_name} schema is empty")
 
@@ -2399,14 +2685,18 @@ def main():
 
     # Ensure bucket exists
     logger.info(f"\n[→] Ensuring S3 bucket {S3_BUCKET_NAME} exists...")
-    from .bucket_manager import BucketManager
-    bucket_manager = BucketManager()
-    bucket_manager.authenticate_aws()
-    bucket_success = bucket_manager.ensure_bucket_exists(S3_BUCKET_NAME)
-    if not bucket_success:
-        logger.error("❌ Bucket setup failed! Cannot proceed.")
-        return
-    logger.info("✓ Bucket is ready!")
+    try:
+        from bucket_manager import BucketManager
+        bucket_manager = BucketManager()
+        bucket_manager.authenticate_aws()
+        bucket_success = bucket_manager.ensure_bucket_exists(S3_BUCKET_NAME)
+        if not bucket_success:
+            logger.error("❌ Bucket setup failed! Cannot proceed.")
+            return
+        logger.info("✓ Bucket is ready!")
+    except ImportError:
+        logger.warning("⚠️  Bucket manager not available, skipping bucket check...")
+        logger.info("✓ Continuing without bucket verification...")
 
     # Load properties from seed.csv
     seed_data_path = "seed.csv"
@@ -2591,16 +2881,19 @@ def process_s3_folder_no_batching(folder_name, prompt, schemas=None):
                 print(f"    [DEBUG] Generating/updating object files")
                 object_files = merge_and_update_object_files_s3(result, image_objects, output_dir, 1)
                 
-                # Create property.json file
+                # Create property.json file using IPFS schema
                 print(f"    [DEBUG] Creating property.json file")
+                
+                # Fetch property schema from IPFS
+                property_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["property"])
+                if not property_schema:
+                    print(f"    [!] ERROR: Could not fetch property schema from IPFS CID {IPFS_SCHEMA_CIDS['property']}")
+                    print(f"    [!] Exiting due to missing property schema")
+                    sys.exit(1)
+                
+                # Create simple property.json with just parcel_id (no wrapper)
                 property_data = {
-                    "type": "property",
-                    "properties": {
-                        "property_id": property_id,
-                        "s3_bucket": S3_BUCKET_NAME,
-                        "s3_prefix": f"{S3_BASE_PREFIX}{folder_name}/",
-                        "image_count": len(image_objects)
-                    }
+                    "parcel_id": property_id
                 }
                 property_path = os.path.join(output_dir, "property.json")
                 with open(property_path, "w") as f:
@@ -2660,14 +2953,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_file_{image_cid}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        relationship_data = {
-            "from": {
-                "/": f"./property.json"
-            },
-            "to": {
-                "/": f"./{filename}"
-            }
-        }
+        # Use IPFS relationship schema structure (without schema in individual files)
+        relationship_data = create_relationship(
+            {"path": "./property.json"},
+            {"path": f"./{filename}"},
+            "property_has_file"
+        )
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -2683,14 +2974,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        relationship_data = {
-            "from": {
-                "/": f"./property.json"
-            },
-            "to": {
-                "/": f"./{filename}"
-            }
-        }
+        # Use IPFS relationship schema structure (without schema in individual files)
+        relationship_data = create_relationship(
+            {"path": "./property.json"},
+            {"path": f"./{filename}"},
+            f"property_has_{obj_type}"
+        )
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -2706,14 +2995,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        relationship_data = {
-            "from": {
-                "/": f"./property.json"
-            },
-            "to": {
-                "/": f"./{filename}"
-            }
-        }
+        # Use IPFS relationship schema structure (without schema in individual files)
+        relationship_data = create_relationship(
+            {"path": "./property.json"},
+            {"path": f"./{filename}"},
+            "property_has_layout"
+        )
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
@@ -2724,49 +3011,49 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         })
         print(f"    [✔] Saved: {rel_filename}")
 
-        # Link layout to all images
-        for image_cid, image_filename in image_cids.items():
-            rel_filename = f"relationship_layout_{layout_key}_file_{image_cid}.json"
-            rel_path = os.path.join(output_dir, rel_filename)
-            
-            relationship_data = {
-                "from": {
-                    "/": f"./{filename}"
-                },
-                "to": {
-                    "/": f"./{image_filename}"
-                }
-            }
-            
-            with open(rel_path, "w") as f:
-                json.dump(relationship_data, f, indent=2)
-            
-            relationship_files.append({
-                "filename": rel_filename,
-                "type": "layout_has_file"
-            })
-            print(f"    [✔] Saved: {rel_filename}")
+        # REMOVED: Layout to file relationships as requested
+        # Link layout to all images from the same processing batch
+        # Since the AI analyzed all images together to create this layout,
+        # the layout is related to all images in the batch
+        # for image_cid, image_filename in image_cids.items():
+        #     rel_filename = f"relationship_layout_{layout_key}_file_{image_cid}.json"
+        #     rel_path = os.path.join(output_dir, rel_filename)
+        #     
+        #     # Use IPFS relationship schema structure
+        #     relationship_data = create_relationship(
+        #         {"path": f"./{filename}"},
+        #         {"path": f"./{image_filename}"},
+        #         "layout_has_file",
+        #         relationship_schema
+        #     )
+        #     
+        #     with open(rel_path, "w") as f:
+        #         json.dump(relationship_data, f, indent=2)
+        #     
+        #     relationship_files.append({
+        #         "filename": rel_filename,
+        #         "type": "layout_has_file"
+        #     })
+        #     print(f"    [✔] Created layout->image relationship: {layout_key} -> {image_filename}")
 
     # Appliance relationships
     for appliance_key, filename in object_files["appliances"].items():
         rel_filename = f"relationship_property_appliance_{appliance_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        relationship_data = {
-            "from": {
-                "/": f"./property.json"
-            },
-            "to": {
-                "/": f"./{filename}"
-            }
-        }
+        # Use IPFS relationship schema structure (without schema in individual files)
+        relationship_data = create_relationship(
+            {"path": "./property.json"},
+            {"path": f"./{filename}"},
+            "property_has_appliance"
+        )
         
         with open(rel_path, "w") as f:
             json.dump(relationship_data, f, indent=2)
         
         relationship_files.append({
             "filename": rel_filename,
-            "type": "property_has_appliance"
+            "type": "layout_has_appliance"
         })
         print(f"    [✔] Saved: {rel_filename}")
 
@@ -2775,7 +3062,8 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
 
 def create_main_relationship_file(relationship_files, output_dir, property_id):
     """Create the main relationship file using IPFS schema format."""
-    main_relationship_file = "bafkreifpjvcslz5hntsetlbic7kabfgzdpijdeuvgbhyismbgoj7x6nt7u.json"
+    # Use the relationship schema CID as the filename
+    main_relationship_file = f"{RELATIONSHIP_SCHEMA_CID}.json"
     filepath = os.path.join(output_dir, main_relationship_file)
     
     # Fetch relationship schema from IPFS
@@ -2796,30 +3084,44 @@ def create_main_relationship_file(relationship_files, output_dir, property_id):
             existing_relationships = {}
     
     # Initialize relationships structure based on IPFS schema
-    if "relationships" not in existing_relationships:
-        existing_relationships["relationships"] = {}
+    # Use the actual IPFS schema structure instead of hardcoded format
+    if not existing_relationships:
+        # Create new structure based on IPFS schema
+        existing_relationships = {}
+        schema_properties = relationship_schema.get("properties", {})
+        for prop_name, prop_info in schema_properties.items():
+            if isinstance(prop_info, dict):
+                prop_type = prop_info.get("type", "string")
+                if prop_type == "array":
+                    existing_relationships[prop_name] = []
+                elif prop_type == "object":
+                    existing_relationships[prop_name] = {}
+                else:
+                    existing_relationships[prop_name] = ""
     
     # Get all possible relationship types from the schema
     schema_relationships = relationship_schema.get("properties", {}).get("relationships", {}).get("properties", {})
     print(f"    [DEBUG] Schema relationship types: {list(schema_relationships.keys())}")
     
     # Group relationships by type
+    print(f"    [DEBUG] Processing {len(relationship_files)} relationship files")
     for relationship_file in relationship_files:
-        # Get relationship type from properties.type field
-        relationship_type = relationship_file.get("properties", {}).get("type", "unknown")
+        # Get relationship type directly from the type field
+        relationship_type = relationship_file.get("type", "unknown")
+        print(f"    [DEBUG] Relationship file: {relationship_file['filename']} -> type: {relationship_type}")
         
         # Check if this relationship type exists in the schema
         if relationship_type in schema_relationships:
-            if relationship_type not in existing_relationships["relationships"]:
-                existing_relationships["relationships"][relationship_type] = []
+            if relationship_type not in existing_relationships.get("relationships", {}):
+                existing_relationships.setdefault("relationships", {})[relationship_type] = []
             
-            # Add the relationship with correct format
+            # Add the relationship with correct format based on IPFS schema
             relationship_entry = {
                 "/": f"./{relationship_file['filename']}"
             }
             
             # Check if this relationship already exists
-            existing_filenames = [rel.get("/", "").replace("./", "") for rel in existing_relationships["relationships"][relationship_type]]
+            existing_filenames = [rel.get("/", "").replace("./", "") for rel in existing_relationships.get("relationships", {}).get(relationship_type, [])]
             if relationship_file['filename'] not in existing_filenames:
                 existing_relationships["relationships"][relationship_type].append(relationship_entry)
                 print(f"    [→] Added {relationship_type}: {relationship_file['filename']}")
@@ -2899,13 +3201,7 @@ def process_s3_property_no_batching(property_id, prompt, schemas=None):
                 # Create property.json file
                 print(f"    [DEBUG] Creating property.json file")
                 property_data = {
-                    "type": "property",
-                    "properties": {
-                        "property_id": property_id,
-                        "s3_bucket": S3_BUCKET_NAME,
-                        "s3_prefix": f"{S3_BASE_PREFIX}{property_id}/",
-                        "image_count": len(image_objects)
-                    }
+                    "parcel_id": property_id
                 }
                 property_path = os.path.join(output_dir, "property.json")
                 with open(property_path, "w") as f:
@@ -3002,13 +3298,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
                 if not os.path.exists(property_path):
                     print(f"    [DEBUG] Creating property.json file")
                     property_data = {
-                        "type": "property",
-                        "properties": {
-                            "property_id": property_id,
-                            "s3_bucket": S3_BUCKET_NAME,
-                            "s3_prefix": f"{S3_BASE_PREFIX}{property_id}/",
-                            "subfolders": [subfolder]
-                        }
+                        "parcel_id": property_id
                     }
                     with open(property_path, "w") as f:
                         json.dump(property_data, f, indent=2)
@@ -3059,7 +3349,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=1):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process images from local categorized folders"""
     try:
         # Local folder path: images/property_id/category/
@@ -3084,30 +3374,26 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         
         logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
         
-        # Process all images in a single batch for efficiency
-        logger.info(f"🔄 Processing all {len(image_files)} images in single batch")
+        # Process images in parallel batches for speed
+        batches = [image_files[i:i + batch_size] for i in range(0, len(image_files), batch_size)]
         
-        batch_results = []
-        try:
-            # Convert image paths to image objects format
-            image_objects = []
-            for image_path in image_files:
-                image_name = os.path.basename(image_path)
-                image_objects.append({
-                    'key': image_path,
-                    'name': image_name
-                })
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
             
-            # Process all images in one API call
-            result, cost = call_openai_optimized_s3(image_objects, prompt)
-            if result:
-                batch_results.append(result)
-                logger.info(f"✅ Single batch completed successfully with {len(image_files)} images")
-            else:
-                logger.error(f"❌ Single batch failed")
-        except Exception as e:
-            logger.error(f"❌ Single batch failed with error: {e}")
-            logger.info(f"🔄 Continuing with fallback processing...")
+            for batch_num, batch in enumerate(batches, 1):
+                future = executor.submit(process_image_batch, batch, prompt, batch_num, schemas)
+                futures.append(future)
+            
+            # Wait for all batches to complete
+            batch_results = []
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        batch_results.append(result)
+                except Exception as e:
+                    logger.error(f"❌ Batch processing failed: {e}")
+                    logger.info(f"🔄 Continuing with remaining batches...")
         
         if batch_results:
             # Merge all batch results
@@ -3138,7 +3424,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         logger.error(f"❌ Error processing local folder {local_folder_path}: {e}")
         return False
 
-def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=10, max_workers=1):
+def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process a single S3 category folder with true multi-threading and intelligent layout merging."""
     start_time = time.time()
     
@@ -3157,64 +3443,86 @@ def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=N
     print(f"[+] Output directory: {output_dir}")
     print(f"[+] Two-phase processing: {batch_size} images per batch, {max_workers} workers")
 
-    # Process all images in a single batch for efficiency
-    print(f"[+] Processing all {len(image_objects)} images in single batch")
-    
+    # Split images into smaller batches for parallel processing
+    batches = [image_objects[i:i + batch_size] for i in range(0, len(image_objects), batch_size)]
+    print(f"[+] Created {len(batches)} batches of {batch_size} images each")
+
+    # Phase 1: Process batches in parallel for speed
     total_cost = 0.0
     all_batch_results = []
     
-    try:
-        # Process all images in one API call
-        result, cost = call_openai_optimized_s3(image_objects, prompt)
-        total_cost += cost
-        if result:
-            all_batch_results.append(result)
-            print(f"    [✔] Single batch completed successfully with {len(image_objects)} images")
-        else:
-            print(f"    [!] Single batch failed")
-    except Exception as e:
-        print(f"    [!] Single batch failed with error: {e}")
-        print(f"    [🔄] Continuing with fallback processing...")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all batches for processing
+        future_to_batch = {
+            executor.submit(process_image_batch, batch, prompt, i+1, schemas): i+1 
+            for i, batch in enumerate(batches)
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_batch):
+            batch_num = future_to_batch[future]
+            try:
+                result, cost = future.result()
+                total_cost += cost
+                if result:
+                    all_batch_results.append(result)
+                    print(f"    [✔] Batch {batch_num} completed successfully")
+                else:
+                    print(f"    [!] Batch {batch_num} failed - no result returned")
+            except Exception as e:
+                print(f"    [!] Batch {batch_num} failed with error: {e}")
+                print(f"    [🔄] Continuing with remaining batches...")
 
     # Phase 2: Intelligent merging with layout detection
     if all_batch_results:
         print(f"    [DEBUG] Phase 2: Intelligent merging of {len(all_batch_results)} batch results")
-        merged_result = merge_batch_results_intelligently(all_batch_results)
+        print(f"    [DEBUG] All batch results: {[list(result.keys()) for result in all_batch_results]}")
+        try:
+            merged_result = merge_batch_results_intelligently(all_batch_results, schemas)
+            print(f"    [DEBUG] Merged result keys: {list(merged_result.keys()) if merged_result else 'None'}")
+            print(f"    [DEBUG] Merged result: {json.dumps(merged_result, indent=2)[:1000] if merged_result else 'None'}...")
+        except Exception as e:
+            print(f"    [!] Error in merge_batch_results_intelligently: {e}")
+            import traceback
+            traceback.print_exc()
+            merged_result = None
         
         # Generate or update object files (merge with existing)
         print(f"    [DEBUG] Generating/updating object files")
-        object_files = merge_and_update_object_files_s3(merged_result, image_objects, output_dir, 1)
+        print(f"    [DEBUG] Merged result keys: {list(merged_result.keys())}")
+        print(f"    [DEBUG] Output directory: {output_dir}")
+        try:
+            object_files = merge_and_update_object_files_s3(merged_result, image_objects, output_dir, 1)
+            print(f"    [DEBUG] Generated object files: {len(object_files) if object_files else 0}")
+        except Exception as e:
+            print(f"    [!] Error in merge_and_update_object_files_s3: {e}")
+            import traceback
+            traceback.print_exc()
+            object_files = {}
         
-        # Create property.json file (only if it doesn't exist)
+        # Create or update property.json file
         property_path = os.path.join(output_dir, "property.json")
-        if not os.path.exists(property_path):
-            print(f"    [DEBUG] Creating property.json file")
-            property_data = {
-                "type": "property",
-                "properties": {
-                    "property_id": property_id,
-                    "s3_bucket": S3_BUCKET_NAME,
-                    "s3_prefix": f"{property_id}/",
-                    "categories": [category]
-                }
-            }
-            with open(property_path, "w") as f:
-                json.dump(property_data, f, indent=2)
-            print(f"    [✔] Saved: property.json")
-        else:
-            # Update existing property.json to include this category
+        property_data = {
+            "parcel_id": property_id
+        }
+        
+        # Update existing property.json if it exists
+        if os.path.exists(property_path):
             try:
                 with open(property_path, "r") as f:
-                    property_data = json.load(f)
-                if "categories" not in property_data["properties"]:
-                    property_data["properties"]["categories"] = []
-                if category not in property_data["properties"]["categories"]:
-                    property_data["properties"]["categories"].append(category)
-                with open(property_path, "w") as f:
-                    json.dump(property_data, f, indent=2)
-                print(f"    [✔] Updated: property.json (added {category})")
+                    existing_data = json.load(f)
+                if "categories" not in existing_data["properties"]:
+                    existing_data["properties"]["categories"] = []
+                if category not in existing_data["properties"]["categories"]:
+                    existing_data["properties"]["categories"].append(category)
+                property_data = existing_data
             except Exception as e:
-                print(f"    [!] Error updating property.json: {e}")
+                print(f"    [WARNING] Could not read existing property.json: {e}")
+        
+        # Write property.json
+        with open(property_path, "w") as f:
+            json.dump(property_data, f, indent=2)
+        print(f"    [✔] Saved: property.json")
         
         # Generate individual relationship files
         print(f"    [DEBUG] Generating individual relationship files")
@@ -3235,15 +3543,31 @@ def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=N
     return total_cost
 
 
-def merge_batch_results_intelligently(batch_results):
+def merge_batch_results_intelligently(batch_results, schemas=None):
     """Intelligently merge batch results, detecting and combining duplicate layouts."""
-    merged = {
-        "layout": [],
-        "structure": {},
-        "lot": {},
-        "utility": [],
-        "appliance": []
-    }
+    # Initialize merged structure based on IPFS schemas
+    if schemas and isinstance(schemas, dict):
+        merged = {}
+        for schema_key, schema_data in schemas.items():
+            if schema_key != "relationship":
+                if schema_data and isinstance(schema_data, dict):
+                    # Check if it should be an array or object based on schema
+                    if schema_data.get('type') == 'array':
+                        merged[schema_key] = []
+                    else:
+                        merged[schema_key] = {}
+                else:
+                    # Default to array for most schemas
+                    merged[schema_key] = []
+    else:
+        # Fallback structure
+        merged = {
+            "layout": [],
+            "structure": {},
+            "lot": {},
+            "utility": [],
+            "appliance": []
+        }
     
     # Collect all layouts from all batches
     all_layouts = []
@@ -3256,28 +3580,28 @@ def merge_batch_results_intelligently(batch_results):
             all_layouts.extend(layouts)
         elif isinstance(layouts, dict):
             all_layouts.append(layouts)
+        else:
+            print(f"    [DEBUG] Unexpected layout type: {type(layouts)}")
     
-    # Group layouts by room type and detect duplicates
+    # Ensure merged["layout"] is always an array
+    if not isinstance(merged.get("layout"), list):
+        merged["layout"] = []
+    
+    # Group layouts by room type and detect duplicates with better matching
     layout_groups = {}
     for layout in all_layouts:
         if not layout:
             continue
             
+        # Use only fields that exist in the actual IPFS schema
+        # We'll group by space_type since that's likely to be in the schema
         space_type = layout.get("space_type", "unknown")
-        layout_identifier = layout.get("layout_identifier", "")
-        room_description = layout.get("room_description", "")
-        room_name = layout.get("room_name", "")
         
         # Create a key for grouping similar layouts
-        if layout_identifier:
-            group_key = f"{space_type}_{layout_identifier}"
-        elif room_description:
-            group_key = f"{space_type}_{room_description[:20]}"
-        elif room_name:
-            group_key = f"{space_type}_{room_name}"
-        else:
-            # If no identifier, use space_type only
-            group_key = space_type
+        # For now, use space_type as the primary grouping key
+        group_key = space_type
+        
+        print(f"    [DEBUG] Layout grouping: {space_type} -> {group_key}")
         
         if group_key not in layout_groups:
             layout_groups[group_key] = []
@@ -3288,11 +3612,14 @@ def merge_batch_results_intelligently(batch_results):
         if len(layouts) == 1:
             # Single layout, no merging needed
             merged["layout"].append(layouts[0])
+            print(f"    [DEBUG] Added single layout for {group_key}")
         else:
             # Multiple layouts for same room, merge them
             print(f"    [DEBUG] Merging {len(layouts)} layouts for {group_key}")
+            print(f"    [DEBUG] Layouts to merge: {[l.get('space_type', 'unknown') for l in layouts]}")
             merged_layout = merge_multiple_layouts(layouts)
             merged["layout"].append(merged_layout)
+            print(f"    [DEBUG] Merged into: {merged_layout.get('space_type', 'unknown')}")
     
     # Merge other data types
     for batch_result in batch_results:
@@ -3315,6 +3642,10 @@ def merge_batch_results_intelligently(batch_results):
         
         # Merge utility
         if "utility" in batch_result:
+            # Ensure merged["utility"] is always an array
+            if not isinstance(merged.get("utility"), list):
+                merged["utility"] = []
+            
             if isinstance(batch_result["utility"], list):
                 merged["utility"].extend(batch_result["utility"])
             elif isinstance(batch_result["utility"], dict):
@@ -3322,6 +3653,10 @@ def merge_batch_results_intelligently(batch_results):
         
         # Merge appliances
         if "appliance" in batch_result:
+            # Ensure merged["appliance"] is always an array
+            if not isinstance(merged.get("appliance"), list):
+                merged["appliance"] = []
+            
             if isinstance(batch_result["appliance"], list):
                 merged["appliance"].extend(batch_result["appliance"])
             elif isinstance(batch_result["appliance"], dict):
@@ -3339,40 +3674,39 @@ def merge_multiple_layouts(layouts):
     merged = layouts[0].copy()
     
     # Merge additional layouts
-    for layout in layouts[1:]:
+    for i, layout in enumerate(layouts[1:], 1):
+        print(f"    [DEBUG] Merging layout {i+1}: {layout.get('space_type', 'unknown')}")
         merged = merge_layout_data(merged, layout)
     
+    print(f"    [DEBUG] Final merged layout: {merged.get('space_type', 'unknown')}")
     return merged
 
 
-def process_image_batch(image_batch, prompt, batch_num):
+def process_image_batch(image_batch, prompt, batch_num, schemas=None):
     """Process a single batch of images with OpenAI API."""
     try:
-        # Set a timeout for individual batch processing (5 minutes)
-        import signal
-        def timeout_handler(signum, frame):
-            raise TimeoutError(f"Batch {batch_num} processing timed out")
-        
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(300)  # 5 minutes timeout
-        
-        try:
-            # Convert image paths to image objects format expected by call_openai_optimized_s3
-            image_objects = []
-            for image_path in image_batch:
-                image_name = os.path.basename(image_path)
+        # Handle both file paths and S3 image objects
+        image_objects = []
+        for item in image_batch:
+            if isinstance(item, dict):
+                # S3 image object already in correct format
+                image_objects.append(item)
+            else:
+                # Local file path - convert to image object format
+                image_name = os.path.basename(item)
                 image_objects.append({
-                    'key': image_path,  # For local files, use the path as key
+                    'key': item,
                     'name': image_name
                 })
-            
-            result, cost = call_openai_optimized_s3(image_objects, prompt)
-            return result, cost
-        finally:
-            signal.alarm(0)  # Cancel the alarm
-    except TimeoutError:
-        print(f"    [!] Batch {batch_num} timed out after 5 minutes")
-        return None, 0.0
+        
+        print(f"    [DEBUG] Batch {batch_num} processing {len(image_objects)} images")
+        for i, img in enumerate(image_objects):
+            print(f"    [DEBUG] Image {i+1}: {img.get('key', 'unknown')}")
+        
+        result, cost = call_openai_optimized_s3(image_objects, prompt, schemas)
+        if result is None:
+            print(f"    [!] Batch {batch_num} - OpenAI API returned no result")
+        return result, cost
     except Exception as e:
         print(f"    [!] Batch {batch_num} failed with error: {e}")
         return None, 0.0

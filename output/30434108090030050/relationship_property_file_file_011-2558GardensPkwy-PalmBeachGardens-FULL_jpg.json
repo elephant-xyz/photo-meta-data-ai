@@ -1,0 +1,12 @@
+{
+  "type": "relationship",
+  "properties": {
+    "from": {
+      "path": "./property.json"
+    },
+    "to": {
+      "path": "./file_011-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+    },
+    "type": "property_has_file"
+  }
+}
