@@ -64,20 +64,27 @@ def summarize_structure(output_dir: str) -> Dict:
     }
     
     structure_file = Path(output_dir) / "structure.json"
+    print(f"    [DEBUG] Looking for structure file: {structure_file}")
     if structure_file.exists():
+        print(f"    [DEBUG] Structure file found: {structure_file}")
         data = load_json_file(str(structure_file))
         if data:
+            print(f"    [DEBUG] Structure data loaded successfully")
             structure_summary["file_found"] = True
             structure_summary["details"] = {
-                "building_type": data.get("building_type", "unknown"),
-                "construction_material": data.get("construction_material", "unknown"),
+                "building_type": data.get("architectural_style_type", data.get("building_type", "unknown")),
+                "construction_material": data.get("exterior_wall_material_primary", data.get("construction_material", "unknown")),
                 "roof_type": data.get("roof_type", "unknown"),
                 "stories": data.get("stories", "unknown"),
                 "year_built": data.get("year_built", "unknown"),
                 "square_footage": data.get("square_footage", "unknown"),
-                "condition": data.get("condition", "unknown"),
+                "condition": data.get("exterior_wall_condition", data.get("condition", "unknown")),
                 "features": data.get("features", [])
             }
+        else:
+            print(f"    [DEBUG] Structure file exists but failed to load data")
+    else:
+        print(f"    [DEBUG] Structure file not found: {structure_file}")
     
     return structure_summary
 
@@ -90,18 +97,25 @@ def summarize_lot(output_dir: str) -> Dict:
     }
     
     lot_file = Path(output_dir) / "lot.json"
+    print(f"    [DEBUG] Looking for lot file: {lot_file}")
     if lot_file.exists():
+        print(f"    [DEBUG] Lot file found: {lot_file}")
         data = load_json_file(str(lot_file))
         if data:
+            print(f"    [DEBUG] Lot data loaded successfully")
             lot_summary["file_found"] = True
             lot_summary["details"] = {
-                "lot_size": data.get("lot_size", "unknown"),
-                "lot_dimensions": data.get("lot_dimensions", "unknown"),
-                "landscape_features": data.get("landscape_features", []),
+                "lot_size": data.get("lot_area_sqft", data.get("lot_size", "unknown")),
+                "lot_dimensions": f"{data.get('lot_length_feet', 'unknown')} x {data.get('lot_width_feet', 'unknown')}" if data.get('lot_length_feet') and data.get('lot_width_feet') else data.get("lot_dimensions", "unknown"),
+                "landscape_features": data.get("landscaping_features", data.get("landscape_features", [])),
                 "outdoor_features": data.get("outdoor_features", []),
-                "parking": data.get("parking", "unknown"),
-                "zoning": data.get("zoning", "unknown")
+                "parking": data.get("driveway_material", data.get("parking", "unknown")),
+                "zoning": data.get("lot_type", data.get("zoning", "unknown"))
             }
+        else:
+            print(f"    [DEBUG] Lot file exists but failed to load data")
+    else:
+        print(f"    [DEBUG] Lot file not found: {lot_file}")
     
     return lot_summary
 
@@ -181,7 +195,9 @@ def print_summary(property_id: str, summary: Dict):
         # Filter out None values
         valid_space_types = [st for st in summary['layouts']['space_types'] if st and st != "unknown" and st != "None"]
         if valid_space_types:
-            print(f"Space Types: {', '.join(valid_space_types)}")
+            print(f"Space Types:")
+            for space_type in valid_space_types:
+                print(f"  • {space_type}")
         for layout in summary['layouts']['details']:
             space_type = layout.get('space_type', 'unknown')
             description = layout.get('description', 'No description')
@@ -229,7 +245,10 @@ def print_summary(property_id: str, summary: Dict):
         if details['zoning'] != "unknown":
             print(f"  Zoning: {details['zoning']}")
         if details['landscape_features']:
-            print(f"  Landscape: {', '.join(details['landscape_features'])}")
+            if isinstance(details['landscape_features'], list):
+                print(f"  Landscape: {', '.join(details['landscape_features'])}")
+            else:
+                print(f"  Landscape: {details['landscape_features']}")
         if details['outdoor_features']:
             print(f"  Outdoor Features: {', '.join(details['outdoor_features'])}")
     else:
@@ -309,12 +328,6 @@ def summarize_property(property_id: str, output_dir: str = "output"):
     
     # Print the summary
     print_summary(property_id, summary)
-    
-    # Save summary to JSON file
-    summary_file = os.path.join(property_dir, "property_summary.json")
-    with open(summary_file, 'w') as f:
-        json.dump(summary, f, indent=2)
-    print(f"\n💾 Summary saved to: {summary_file}")
     
     return summary
 

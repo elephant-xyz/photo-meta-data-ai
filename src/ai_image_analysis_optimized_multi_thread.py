@@ -387,24 +387,12 @@ def generate_placeholder_cid(prefix, identifier):
 
 def create_relationship(from_cid, to_cid, relationship_type, relationship_schema=None):
     """Create a relationship object following the IPFS schema or default format."""
-    if relationship_schema:
-        # Use IPFS relationship schema if available
-        return {
-            "type": "relationship",
-            "properties": {
-                "from": from_cid,
-                "to": to_cid,
-                "type": relationship_type
-            },
-            "schema": relationship_schema
-        }
-    else:
-        # For individual relationship files, use simple format with direct fields
-        return {
-            "from": from_cid,
-            "to": to_cid,
-            "type": relationship_type
-        }
+    # For individual relationship files, use simple format with direct fields
+    return {
+        "from": from_cid,
+        "to": to_cid,
+        "type": relationship_type
+    }
 
 
 def generate_smart_relationships_from_batch(batch_data, image_paths, property_cid):
@@ -1547,7 +1535,7 @@ def generate_relationships_from_object_files_s3(object_files, image_objects, pro
     return relationships
 
 
-def generate_relationships_from_object_files(object_files, image_paths, property_cid, batch_number, folder_path):
+def generate_relationships_from_object_files(object_files, image_paths, property_cid, batch_number, folder_path, relationship_schema=None):
     """
     Generate relationships using clean, meaningful CIDs based on filenames.
     Now uses actual filenames as CIDs in relationships.
@@ -1565,7 +1553,7 @@ def generate_relationships_from_object_files(object_files, image_paths, property
 
     # Create property -> image relationships using image CIDs (which are filenames without .json)
     for image_cid in image_cids.keys():
-        relationships.append(create_relationship(property_cid, image_cid, "property_has_file"))
+        relationships.append(create_relationship(property_cid, image_cid, "property_has_file", relationship_schema))
 
     # Property-level object relationships using filenames as CIDs
     for obj_type, filename in object_files["property_objects"].items():
@@ -1580,13 +1568,13 @@ def generate_relationships_from_object_files(object_files, image_paths, property
         }
 
         rel_type = relationship_mapping.get(obj_type, f"property_has_{obj_type}")
-        relationships.append(create_relationship(property_cid, obj_cid, rel_type))
+        relationships.append(create_relationship(property_cid, obj_cid, rel_type, relationship_schema))
 
     # Layout relationships using filenames as CIDs
     for layout_key, filename in object_files["layouts"].items():
         # Use filename without .json extension as CID
         layout_cid = filename.replace(".json", "")
-        relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout"))
+        relationships.append(create_relationship(property_cid, layout_cid, "property_has_layout", relationship_schema))
 
         # REMOVED: Layout to image relationships as requested
         # Link layout to all images in batch
@@ -1597,7 +1585,7 @@ def generate_relationships_from_object_files(object_files, image_paths, property
     for appliance_key, filename in object_files["appliances"].items():
         # Use filename without .json extension as CID
         appliance_cid = filename.replace(".json", "")
-        relationships.append(create_relationship(property_cid, appliance_cid, "property_has_appliance"))
+        relationships.append(create_relationship(property_cid, appliance_cid, "property_has_appliance", relationship_schema))
 
     return relationships
 
@@ -1922,6 +1910,12 @@ def merge_layout_data(existing, new):
         if key == "appliances":
             # Handle appliances separately
             continue
+        elif key == "space_type":
+            # Clean and normalize space_type
+            if value and isinstance(value, str):
+                cleaned_value = value.strip()
+                if cleaned_value and cleaned_value != "unknown":
+                    merged[key] = cleaned_value
         elif key in merged:
             if isinstance(value, dict) and isinstance(merged[key], dict):
                 merged[key] = merge_layout_data(merged[key], value)
@@ -3049,11 +3043,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_file_{image_cid}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure (without schema in individual files)
+        # Use IPFS relationship schema structure
         relationship_data = create_relationship(
             {"path": "./property.json"},
             {"path": f"./{filename}"},
-            "property_has_file"
+            "property_has_file",
+            relationship_schema
         )
         
         with open(rel_path, "w") as f:
@@ -3070,11 +3065,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure (without schema in individual files)
+        # Use IPFS relationship schema structure
         relationship_data = create_relationship(
             {"path": "./property.json"},
             {"path": f"./{filename}"},
-            f"property_has_{obj_type}"
+            f"property_has_{obj_type}",
+            relationship_schema
         )
         
         with open(rel_path, "w") as f:
@@ -3091,11 +3087,12 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Use IPFS relationship schema structure (without schema in individual files)
+        # Use IPFS relationship schema structure
         relationship_data = create_relationship(
             {"path": "./property.json"},
             {"path": f"./{filename}"},
-            "property_has_layout"
+            "property_has_layout",
+            relationship_schema
         )
         
         with open(rel_path, "w") as f:
@@ -3553,8 +3550,9 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
             
             # Generate relationships
             property_cid = generate_placeholder_cid("property", property_id)
+            relationship_schema = schemas.get("relationship") if schemas else None
             relationship_files = generate_relationships_from_object_files(
-                object_files, image_files, property_cid, 1, local_folder_path
+                object_files, image_files, property_cid, 1, local_folder_path, relationship_schema
             )
             
             # Create main relationship file
@@ -3743,11 +3741,17 @@ def merge_batch_results_intelligently(batch_results, schemas=None):
         # We'll group by space_type since that's likely to be in the schema
         space_type = layout.get("space_type", "unknown")
         
+        # Clean the space_type - remove trailing spaces and normalize
+        if space_type and isinstance(space_type, str):
+            space_type = space_type.strip()
+            if not space_type:  # If empty after stripping, use "unknown"
+                space_type = "unknown"
+        
         # Create a key for grouping similar layouts
         # For now, use space_type as the primary grouping key
         group_key = space_type
         
-        print(f"    [DEBUG] Layout grouping: {space_type} -> {group_key}")
+        print(f"    [DEBUG] Layout grouping: {layout.get('space_type', 'unknown')} -> cleaned: {space_type} -> {group_key}")
         
         if group_key not in layout_groups:
             layout_groups[group_key] = []

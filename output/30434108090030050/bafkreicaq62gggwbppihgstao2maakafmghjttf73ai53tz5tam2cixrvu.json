@@ -18,114 +18,15 @@
     ],
     "property_has_layout": [
       {
-        "/": "./relationship_property_layout_bedroom_layout_1753268365.json"
+        "/": "./relationship_property_layout_none_layout_1753280481.json"
       },
       {
-        "/": "./relationship_property_layout_closet_layout_1753268403.json"
-      },
-      {
-        "/": "./relationship_property_layout_entryway_layout_1753268740.json"
-      },
-      {
-        "/": "./relationship_property_layout_none_layout_1753268740.json"
-      },
-      {
-        "/": "./relationship_property_layout_balcony_layout_1753268740.json"
-      },
-      {
-        "/": "./relationship_property_layout_garage_layout_1753268783.json"
-      },
-      {
-        "/": "./relationship_property_layout_dining_room_layout_1753268959.json"
-      },
-      {
-        "/": "./relationship_property_layout_kitchen_layout_1753268959.json"
-      },
-      {
-        "/": "./relationship_property_layout_bathroom_layout_1753268959.json"
-      },
-      {
-        "/": "./relationship_property_layout_half_bathroom_layout_1753268959.json"
-      },
-      {
-        "/": "./relationship_property_layout_pantry_layout_1753268959.json"
-      },
-      {
-        "/": "./relationship_property_layout_laundry_room_layout_1753268994.json"
-      },
-      {
-        "/": "./relationship_property_layout_entryway_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_office_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_living_room_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_dining_room_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_none_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_breakfast_nook_layout_1753269176.json"
-      },
-      {
-        "/": "./relationship_property_layout_none_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_bathroom_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_office_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_foyer_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_kitchen_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_dining_room_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_living_room_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_primary_bedroom_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_primary_bathroom_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_bedroom_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_laundry_room_layout_1753269305.json"
-      },
-      {
-        "/": "./relationship_property_layout_none_layout_1753269372.json"
-      },
-      {
-        "/": "./relationship_property_layout_bedroom_layout_1753271169.json"
+        "/": "./relationship_property_layout_entryway_layout_1753280571.json"
       }
     ],
     "layout_has_appliance": [
       {
         "/": "./relationship_property_appliance_none.json"
-      },
-      {
-        "/": "./relationship_property_appliance_coffee_maker,_toaster.json"
-      },
-      {
-        "/": "./relationship_property_appliance_refrigerator,_oven,_microwave,_toaster.json"
-      },
-      {
-        "/": "./relationship_property_appliance_washer_and_dryer.json"
-      },
-      {
-        "/": "./relationship_property_appliance_refrigerator,_oven,_microwave.json"
       }
     ]
   }

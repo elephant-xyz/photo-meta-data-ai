@@ -1,16 +1,16 @@
 {
   "driveway_condition": "Good",
-  "driveway_material": "Pavers",
-  "fence_height": "medium",
-  "fence_length": "short",
-  "fencing_type": "metal",
-  "landscaping_features": "Palm trees, manicured shrubs",
+  "driveway_material": "pavers",
+  "fence_height": "Medium",
+  "fence_length": "Moderate",
+  "fencing_type": "Metal",
+  "landscaping_features": "shrubs, decorative plants",
   "lot_area_sqft": null,
   "lot_condition_issues": null,
   "lot_length_feet": null,
-  "lot_type": "Waterfront",
+  "lot_type": "Townhouse",
   "lot_width_feet": null,
   "request_identifier": null,
   "source_http_request": {},
-  "view": "Lake view"
+  "view": "front entrance"
 }
