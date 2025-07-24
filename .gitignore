@@ -168,3 +168,11 @@ env
 
 .idea/
 .DS_Store
+test-data/
+.DS_Store
+photo_data_group/
+test.sh
+submit_errors.csv
+submit_warnings.csv
+upload-results.csv
+validation_results.csv
