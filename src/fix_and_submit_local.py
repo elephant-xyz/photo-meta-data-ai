@@ -676,7 +676,7 @@ def attempt_auto_fixes(submit_dir, errors):
                     print(f"  🔧 Updated request_identifier in {filename} to: {property_id}")
             
             # Ensure file document_type and file_format for file_xxxxxx files (but not relationship files)
-            if "file_" in filename and "photo_metadata" in filename and not filename.startswith("relationship_"):
+            if filename.startswith("file_") and "photo_metadata" in filename and not filename.startswith("relationship_"):
                 if "document_type" not in data or data["document_type"] != "PropertyImage":
                     data["document_type"] = "PropertyImage"
                     modified = True

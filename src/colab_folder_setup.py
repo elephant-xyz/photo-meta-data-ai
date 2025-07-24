@@ -178,8 +178,8 @@ def main():
     parser = argparse.ArgumentParser(description='Colab Folder Setup Script')
     parser.add_argument('--base-path', type=str, default='.', 
                        help='Base path for creating folders (default: current directory)')
-    parser.add_argument('--upload-results-file', type=str, default='upload_results.csv',
-                       help='Path to upload_results.csv file (default: upload_results.csv)')
+    parser.add_argument('--upload-results-file', type=str, default='upload-results.csv',
+                       help='Path to upload_results.csv file (default: upload-results.csv)')
     
     args = parser.parse_args()
     
