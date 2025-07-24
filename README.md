@@ -123,9 +123,11 @@ export S3_BUCKET_NAME='your-bucket-name'
 - ✅ Improved retry logic with exponential backoff
 - ✅ All logs now go to files only (no console output)
 - ✅ **NEW: WebP image optimization for IPFS** - Automatic conversion to WebP format:
-  - Applied to all images before IPFS uploads (up to 90% size reduction)
-  - Reduces API costs and speeds up AI analysis
-  - Maintains image quality while minimizing bandwidth usage
+  - All images in output directories are converted to .webp format
+  - JSON metadata files automatically reference the .webp filenames
+  - Up to 90% file size reduction for efficient IPFS uploads
+  - Maintains high image quality (90% quality setting)
+  - Original images remain unchanged; only output copies are converted
 
 **Logging and Output:**
 - ✅ All scripts use proper logging instead of print statements

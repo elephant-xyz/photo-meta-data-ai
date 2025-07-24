@@ -18,7 +18,10 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import tempfile
 import logging
 from dotenv import load_dotenv
-from .image_converter import ImageConverter, convert_to_webp_base64
+try:
+    from .image_converter import ImageConverter, convert_to_webp_base64
+except ImportError:
+    from image_converter import ImageConverter, convert_to_webp_base64
 
 # Configure logging
 def setup_logging():
@@ -1212,6 +1215,7 @@ def call_openai_optimized(image_paths, prompt):
 def generate_image_json_files_s3(image_objects, output_dir, batch_number):
     """Generate individual JSON files for each S3 image using the file schema from IPFS."""
     image_files = {}
+    converter = ImageConverter(logger)
 
     # Images will be saved in the same folder as JSON files
 
@@ -1224,21 +1228,39 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
 
     for i, image_obj in enumerate(image_objects):
         # Generate a unique CID for the image
-        image_name = image_obj['name']
-        image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
+        original_name = image_obj['name']
+        # Change extension to .webp
+        base_name = os.path.splitext(original_name)[0]
+        webp_name = f"{base_name}.webp"
+        image_cid = generate_clean_cid("file", webp_name.replace(".", "_"))
 
-        # Download image from S3 to output folder (same folder as JSON files)
-        image_dest_path = os.path.join(output_dir, image_name)
+        # Download image from S3 to temp location first
+        temp_path = os.path.join(output_dir, f"temp_{original_name}")
+        webp_dest_path = os.path.join(output_dir, webp_name)
+        
         try:
             s3_key = image_obj['key']
-            s3_client.download_file(S3_BUCKET_NAME, s3_key, image_dest_path)
-            logger.info(f"Downloaded image: {image_name} from S3 to {image_dest_path}")
+            s3_client.download_file(S3_BUCKET_NAME, s3_key, temp_path)
+            logger.info(f"Downloaded image: {original_name} from S3")
+            
+            # Convert to WebP
+            webp_bytes = converter.convert_to_webp(temp_path, quality=90)
+            with open(webp_dest_path, 'wb') as f:
+                f.write(webp_bytes)
+            logger.info(f"Converted to WebP: {original_name} -> {webp_name}")
+            
+            # Remove temp file
+            os.unlink(temp_path)
+            
         except Exception as e:
-            logger.error(f"Failed to download image {image_name} from S3: {e}")
+            logger.error(f"Failed to download/convert image {original_name}: {e}")
+            # Clean up temp file if it exists
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
             continue
 
         # Create image JSON using the file schema from IPFS with relative path
-        relative_image_path = f"./{image_name}"
+        relative_image_path = f"./{webp_name}"
 
         # Use IPFS schema structure directly (no type/properties wrapper)
         image_data = {}
@@ -1255,9 +1277,9 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
                         if prop_name == "ipfs_url":
                             image_data[prop_name] = relative_image_path
                         elif prop_name == "name":
-                            image_data[prop_name] = image_name
+                            image_data[prop_name] = webp_name
                         elif prop_name == "file_format":
-                            image_data[prop_name] = image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
+                            image_data[prop_name] = "webp"
                         elif prop_name == "document_type":
                             image_data[prop_name] = "image"
                         else:
@@ -1287,6 +1309,7 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
 def generate_image_json_files(image_paths, output_dir, batch_number):
     """Generate individual JSON files for each image using the file schema from IPFS."""
     image_files = {}
+    converter = ImageConverter(logger)
 
     # Images will be saved in the same folder as JSON files
 
@@ -1299,21 +1322,26 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
 
     for i, image_path in enumerate(image_paths):
         # Generate a unique CID for the image
-        image_name = os.path.basename(image_path)
-        image_cid = generate_clean_cid("file", image_name.replace(".", "_"))
+        original_name = os.path.basename(image_path)
+        # Change extension to .webp
+        base_name = os.path.splitext(original_name)[0]
+        webp_name = f"{base_name}.webp"
+        image_cid = generate_clean_cid("file", webp_name.replace(".", "_"))
 
-        # Copy image to output folder (same folder as JSON files)
-        image_dest_path = os.path.join(output_dir, image_name)
+        # Convert and save as WebP to output folder
+        webp_dest_path = os.path.join(output_dir, webp_name)
         try:
-            import shutil
-            shutil.copy2(image_path, image_dest_path)
-            logger.info(f"Copied image: {image_name} to {image_dest_path}")
+            # Convert to WebP
+            webp_bytes = converter.convert_to_webp(image_path, quality=90)
+            with open(webp_dest_path, 'wb') as f:
+                f.write(webp_bytes)
+            logger.info(f"Converted and saved: {original_name} -> {webp_name}")
         except Exception as e:
-            logger.error(f"Failed to copy image {image_name}: {e}")
+            logger.error(f"Failed to convert image {original_name}: {e}")
             continue
 
         # Create image JSON using the file schema from IPFS with relative path
-        relative_image_path = f"./{image_name}"
+        relative_image_path = f"./{webp_name}"
 
         # Use IPFS schema structure directly (no type/properties wrapper)
         image_data = {}
@@ -1330,9 +1358,9 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
                         if prop_name == "ipfs_url":
                             image_data[prop_name] = relative_image_path
                         elif prop_name == "name":
-                            image_data[prop_name] = image_name
+                            image_data[prop_name] = webp_name
                         elif prop_name == "file_format":
-                            image_data[prop_name] = image_name.split('.')[-1].lower() if '.' in image_name else "unknown"
+                            image_data[prop_name] = "webp"
                         elif prop_name == "document_type":
                             image_data[prop_name] = "image"
                         else:
