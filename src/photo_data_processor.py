@@ -28,8 +28,9 @@ class PhotoMetadata(NamedTuple):
 
 class IPLDReference(NamedTuple):
     """IPLD reference with a single '/' key pointing to a path or CID"""
+
     path: str
-    
+
     def to_dict(self) -> dict[str, str]:
         """Convert to dictionary format for JSON serialization"""
         return {"/": self.path}
@@ -101,10 +102,7 @@ def create_photo_metadata(file_path: Path, relative_path: str) -> PhotoMetadata:
 
 def create_link_metadata(cid: str, metadata_file_path: str) -> LinkMetadata:
     """Create LinkMetadata between CID and metadata file"""
-    return LinkMetadata(
-        from_cid=IPLDReference(path=cid),
-        to_file=IPLDReference(path=f"./{metadata_file_path}")
-    )
+    return LinkMetadata(from_cid=IPLDReference(path=cid), to_file=IPLDReference(path=f"./{metadata_file_path}"))
 
 
 def default_serializer(obj: Any) -> Any:
@@ -112,10 +110,10 @@ def default_serializer(obj: Any) -> Any:
     if isinstance(obj, IPLDReference):
         # Handle IPLDReference specifically to return dict format
         return obj.to_dict()
-    elif hasattr(obj, '_asdict'):
+    elif hasattr(obj, "_asdict"):
         # Handle NamedTuple
         return obj._asdict()
-    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes, bytearray)):
         # Handle iterators (like map objects)
         return list(obj)
     # Let orjson handle the error for unsupported types
@@ -125,14 +123,10 @@ def default_serializer(obj: Any) -> Any:
 def write_json_file(file_path: Path, data: Any) -> None:
     """Write data to JSON file using orjson"""
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Serialize with orjson using custom default handler
-    json_bytes = orjson.dumps(
-        data,
-        default=default_serializer,
-        option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS
-    )
-    
+    json_bytes = orjson.dumps(data, default=default_serializer, option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS)
+
     # Write bytes to file
     with open(file_path, "wb") as f:
         f.write(json_bytes)
@@ -169,20 +163,17 @@ def process_photo_file(cid: str, photo_path: Path, base_dir: Path) -> ProcessedF
 
 def is_not_hidden(path: Path) -> bool:
     """Check if path is not hidden (doesn't start with .)"""
-    return not path.name.startswith('.')
+    return not path.name.startswith(".")
 
 
 def get_all_files(directory: Path) -> Iterator[Path]:
     """Get all files recursively from directory"""
-    return filter(methodcaller('is_file'), directory.rglob('*'))
+    return filter(methodcaller("is_file"), directory.rglob("*"))
 
 
 def get_image_files(directory: Path) -> Iterator[Path]:
     """Recursively find all image files in directory"""
-    return filter(
-        lambda p: is_not_hidden(p) and is_image_file(p),
-        get_all_files(directory)
-    )
+    return filter(lambda p: is_not_hidden(p) and is_image_file(p), get_all_files(directory))
 
 
 def extract_link_path(base_dir: Path) -> Callable[[ProcessedFile], Path]:
@@ -196,19 +187,13 @@ def process_cid_directory(cid_dir: Path, base_dir: Path) -> CIDProcessingResult:
 
     # Create partial function for processing files in this CID
     process_file_in_cid = partial(process_photo_file, cid)
-    
+
     # Process all image files using map
-    processed_files = map(
-        lambda photo_path: process_file_in_cid(photo_path, base_dir),
-        get_image_files(cid_dir)
-    )
+    processed_files = map(lambda photo_path: process_file_in_cid(photo_path, base_dir), get_image_files(cid_dir))
 
     # Extract link file paths relative to base directory using map
     # We need to materialize here because we consume the iterator
-    link_files = list(map(
-        extract_link_path(base_dir),
-        processed_files
-    ))
+    link_files = list(map(extract_link_path(base_dir), processed_files))
 
     return CIDProcessingResult(cid=cid, link_files=link_files)
 
@@ -220,10 +205,7 @@ def create_link_reference(link_file: Path) -> IPLDReference:
 
 def create_root_metadata(link_files: list[Path]) -> RootMetadata:
     """Create root metadata from link files"""
-    return RootMetadata(
-        label="Photo", 
-        property_seed_has_file=list(map(create_link_reference, link_files))
-    )
+    return RootMetadata(label="Photo", property_seed_has_file=list(map(create_link_reference, link_files)))
 
 
 def is_directory(path: Path) -> bool:
@@ -233,10 +215,7 @@ def is_directory(path: Path) -> bool:
 
 def get_cid_directories(input_dir: Path) -> list[Path]:
     """Get all non-hidden directories from input directory"""
-    return list(filter(
-        lambda d: is_directory(d) and is_not_hidden(d),
-        input_dir.iterdir()
-    ))
+    return list(filter(lambda d: is_directory(d) and is_not_hidden(d), input_dir.iterdir()))
 
 
 def extract_link_files(result: CIDProcessingResult) -> list[Path]:
@@ -266,9 +245,7 @@ def process_photo_data_group(input_dir: Path) -> None:
     processing_results = list(map(process_cid, cid_dirs))
 
     # Collect all link files using chain and map
-    all_link_files = list(chain.from_iterable(
-        map(extract_link_files, processing_results)
-    ))
+    all_link_files = list(chain.from_iterable(map(extract_link_files, processing_results)))
 
     if not all_link_files:
         print("No image files found in any CID directories")
