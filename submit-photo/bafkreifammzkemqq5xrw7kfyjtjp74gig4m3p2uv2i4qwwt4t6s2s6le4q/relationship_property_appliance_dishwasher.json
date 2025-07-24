@@ -1,0 +1,8 @@
+{
+  "from": {
+    "/": "./property.json"
+  },
+  "to": {
+    "/": "./appliance_dishwasher_batch_01.json"
+  }
+}

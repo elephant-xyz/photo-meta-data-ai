@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Fix and Submit Local Script for Google Colab
+# This script fixes data issues and submits to elephant-cli
+
+echo "🚀 Starting fix and submit local process..."
+echo "🔧 Will fix source_http_request, request_identifier, and other issues"
+echo "📁 Processes data from output/ to submit-photo/"
+echo "🔍 Runs elephant-cli validation with auto-fixes"
+
+# Check if we're in the right directory
+if [ ! -d "output" ]; then
+    echo "❌ Error: output/ directory not found!"
+    echo "Please run this script from the project root directory"
+    exit 1
+fi
+
+echo "📋 Step 1: Loading property CIDs from upload-results.csv..."
+echo "📁 Step 2: Copying data from output/ to submit-photo/"
+echo "🔧 Step 3: Fixing source_http_request and other issues..."
+echo "🔧 Step 4: Ensuring layout files have required fields..."
+echo "🔄 Step 5: Renaming folders to propertyCID..."
+echo "🔍 Step 6: Running CLI validation iteratively..."
+
+# Run the fix and submit local script
+python fix_and_submit_local.py
+
+echo "✅ Fix and submit local process completed!"
+echo "📁 Results in submit-photo/ directory"
+echo "📊 Check submit_errors.csv for any remaining issues" 

@@ -60,7 +60,7 @@ parcel_id,Address,method,headers,url,multiValueQueryString,body,json,source_iden
 52434205310037080,"2558 GARDENS PKWY,JUPITER","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["52434205310037080"]},,,52434205310037080,palm beach
 ```
 
-### Create `upload_results.csv` (if using parcel processor)
+### Create `upload-results.csv` (if using parcel processor)
 ```csv
 propertyCid,dataGroupCid,dataCid,filePath,uploadedAt
 bafkreiepon5udb7ekskmmywzlxyn5bkicw33jed63wu2ic3a6qj3bkn4ty,bafkreicejtlqsmjzaz7wo2rfp7wdfihuayyl3x342z3evr46t6qym4h6be,bafkreiepon5udb7ekskmmywzlxyn5bkicw33jed63wu2ic3a6qj3bkn4ty,"/content/output/52434205310037080/bafkreicejtlqsmjzaz7wo2rfp7wdfihuayyl3x342z3evr46t6qym4h6be.json",2025-07-22T14:59:46.733Z
@@ -202,7 +202,7 @@ output/
 3. **Missing Files**
    - Ensure `seed.csv` exists in current directory
    - Verify `images/` folder structure matches parcel IDs
-   - Check that `upload_results.csv` exists (for parcel processor)
+   - Check that `upload-results.csv` exists (for parcel processor)
 
 4. **OpenAI API Errors**
    - Verify `OPENAI_API_KEY` is set correctly

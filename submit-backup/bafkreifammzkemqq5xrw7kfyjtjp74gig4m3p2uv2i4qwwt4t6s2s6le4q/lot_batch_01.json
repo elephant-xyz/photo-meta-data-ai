@@ -1,0 +1,19 @@
+{
+  "driveway_condition": null,
+  "driveway_material": null,
+  "fence_height": null,
+  "fence_length": null,
+  "fencing_type": null,
+  "landscaping_features": null,
+  "lot_area_sqft": null,
+  "lot_condition_issues": null,
+  "lot_length_feet": null,
+  "lot_type": null,
+  "lot_width_feet": null,
+  "request_identifier": "30434108090030050",
+  "source_http_request": {
+    "method": "GET",
+    "url": "https://pbcpao.gov/Property/Details"
+  },
+  "view": null
+}

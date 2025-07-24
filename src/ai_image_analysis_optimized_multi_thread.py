@@ -80,8 +80,8 @@ S3_BASE_PREFIX = os.getenv('S3_BASE_PREFIX', '')  # Will be set per property
 
 # IPFS Schema CIDs
 IPFS_SCHEMA_CIDS = {
-    "lot": "bafkreigy3tsgcwtgz4nu5jc7cnkb6bizpbxbn3rh6ectz44z6f3tqfjdum",
-    "layout": "bafkreihrwupbrldaxwm2qcuryrug5pwplxmp4ckdo7whqz52zwuw5j7l2q",
+    "lot": "bafkreihjsl7r4nbuj4uipqiaejeaps55lsuitjzhl3yob266ejbekpkr6q",
+    "layout": "bafkreiexvcm7ghuymwc3xigfk2jh5xhv4kqs5qngctck5hwkvgu4gl22w4",
     "structure": "bafkreid2wa56cecrm6ge4slmsm56xqy6j3gqlhldrljmruh64ams542xxe",
     "utility": "bafkreihuoaw6fm5abblivzgepkxkhduc5mivhho4rcidp5lvgb7fhyuide",
     "appliance": "bafkreieew4njulmeecnm3kah7w43eiali6lre5o45ttiyaqfjhb3ecu2mq",
@@ -91,7 +91,7 @@ IPFS_SCHEMA_CIDS = {
 }
 
 # Relationship schema CID
-RELATIONSHIP_SCHEMA_CID = "bafkreicaq62gggwbppihgstao2maakafmghjttf73ai53tz5tam2cixrvu"
+RELATIONSHIP_SCHEMA_CID = "bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma"
 
 
 SCHEMA_FOLDER = "schema"
@@ -733,10 +733,18 @@ LAYOUT SCHEMA FIELDS:
                         if isinstance(prop_info, dict):
                             description = prop_info.get('description', '')
                             prop_type = prop_info.get('type', '')
-                            schema_instructions += f"- {prop_name}: {prop_type} - {description}\n"
                             
-                            # Add example value based on type
-                            if prop_type == "string":
+                            # Check for enum values
+                            enum_values = prop_info.get('enum', [])
+                            if enum_values:
+                                schema_instructions += f"- {prop_name}: {prop_type} - {description} (ENUM: {', '.join(map(str, enum_values))})\n"
+                            else:
+                                schema_instructions += f"- {prop_name}: {prop_type} - {description}\n"
+                            
+                            # Add example value based on type and enum
+                            if enum_values:
+                                example_structure[schema_key][prop_name] = enum_values[0] if enum_values else "example_value"
+                            elif prop_type == "string":
                                 example_structure[schema_key][prop_name] = "example_value"
                             elif prop_type == "array":
                                 example_structure[schema_key][prop_name] = ["example_item"]
@@ -757,6 +765,12 @@ CRITICAL SCHEMA RULES:
 - LOT schema: Only include lot/landscape fields (size, driveway_material, landscaping, etc.)
 - DO NOT mix fields between schemas (e.g., don't put pool fields in layout schema)
 
+ENUM VALUE RULES:
+- For fields with ENUM values listed, you MUST use ONLY those exact values
+- Do not invent new values - use only the enum values provided
+- If you cannot determine the exact enum value, use null or the most appropriate enum value
+- Example: If pool_type has ENUM: ["in-ground", "above-ground", "none"], use only these values
+
 ANALYSIS INSTRUCTIONS:
 - Look for specific features in each image: furniture, appliances, room types, building materials, utilities
 - For layouts: Identify room types (bedroom, kitchen, bathroom, living room, etc.) and describe what you see
@@ -764,6 +778,8 @@ ANALYSIS INSTRUCTIONS:
 - For appliances: Identify any visible appliances (refrigerator, stove, washer, dryer, etc.) and their condition
 - For utilities: Look for HVAC systems, electrical panels, plumbing fixtures, etc.
 - For lot: Identify landscaping, driveway materials, lot size indicators, outdoor features
+- CRITICAL: Use ONLY the enum values provided in the schema - do not invent new values
+- CRITICAL: Match what you see to the exact enum values available
 
 DETAILED ANALYSIS RULES:
 - Examine each image carefully for visible features
@@ -2535,7 +2551,7 @@ def print_final_statistics():
     logger.info("=" * 60)
 
 
-def process_all_local_properties_from_folders(property_folders, prompt, schemas=None, batch_size=3, max_workers=3):
+def process_all_local_properties_from_folders(property_folders, prompt, schemas=None, batch_size=10, max_workers=12, parallel_categories=False, category_workers=12):
     """Process all local properties from discovered folders"""
     logger.info(f"🖥️  Processing {len(property_folders)} local properties...")
     
@@ -2568,30 +2584,47 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
         
         logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
         
-        # Process each category folder
-        property_success = False
-        for category in categories:
-            logger.info(f"\n{'='*60}")
-            logger.info(f"🏠 Processing Category: {category}")
-            logger.info(f"{'='*60}")
+        # Process categories based on parallel flag
+        if parallel_categories:
+            logger.info(f"🚀 Processing categories in parallel for {property_id}")
+            result = process_local_categories_parallel(
+                property_id, categories, prompt, schemas, 
+                batch_size, max_workers, category_workers
+            )
+            property_success = result['success']
+            if property_success:
+                logger.info(f"✅ Successfully processed property {property_id} with parallel categories")
+            else:
+                logger.warning(f"⚠️  Failed to process property {property_id} with parallel categories")
+        else:
+            # Process each category folder sequentially
+            logger.info(f"🔄 Processing categories sequentially for {property_id}")
+            property_success = False
+            for category in categories:
+                logger.info(f"\n{'='*60}")
+                logger.info(f"🏠 Processing Category: {category}")
+                logger.info(f"{'='*60}")
+                
+                try:
+                    # Process the category folder
+                    success = process_local_category_folder(property_id, category, prompt, schemas, batch_size, max_workers)
+                    if success:
+                        property_success = True
+                        logger.info(f"✅ Successfully processed category {category}")
+                    else:
+                        logger.warning(f"⚠️  Failed to process category {category}")
+                except Exception as e:
+                    logger.error(f"❌ Error processing category {category}: {e}")
             
-            try:
-                # Process the category folder
-                success = process_local_category_folder(property_id, category, prompt, schemas, batch_size, max_workers)
-                if success:
-                    property_success = True
-                    logger.info(f"✅ Successfully processed category {category}")
-                else:
-                    logger.warning(f"⚠️  Failed to process category {category}")
-            except Exception as e:
-                logger.error(f"❌ Error processing category {category}: {e}")
+            if property_success:
+                logger.info(f"✅ Successfully processed property {property_id}")
+            else:
+                logger.warning(f"⚠️  Failed to process property {property_id}")
         
         if property_success:
             total_successful += 1
-            logger.info(f"✅ Successfully processed property {property_id}")
         else:
             total_failed += 1
-            logger.warning(f"⚠️  Failed to process property {property_id}")
     
     logger.info(f"\n{'='*60}")
     logger.info(f"LOCAL PROCESSING SUMMARY")
@@ -2602,6 +2635,76 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
     
     return total_successful > 0
 
+
+def process_local_categories_parallel(property_id, categories, prompt, schemas=None, batch_size=10, max_workers=12, category_workers=12):
+    """Process local categories in parallel."""
+    logger.info(f"🚀 Using parallel category processing with {category_workers} workers")
+    logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
+    
+    total_cost = 0
+    completed_categories = []
+    failed_categories = []
+    
+    def process_category_worker(category):
+        """Worker function to process a single category."""
+        try:
+            logger.info(f"🚀 Processing category {category} for {property_id}")
+            start_time = time.time()
+            
+            # Process the category
+            result = process_local_category_folder(
+                property_id, category, prompt, schemas, 
+                batch_size, max_workers
+            )
+            
+            end_time = time.time()
+            duration = end_time - start_time
+            
+            if result and result.get('success'):
+                cost = result.get('cost', 0)
+                total_cost += cost
+                logger.info(f"✅ Completed category {category} (Cost: ${cost:.4f}, Duration: {duration:.1f}s)")
+                return {'category': category, 'success': True, 'cost': cost, 'duration': duration}
+            else:
+                logger.error(f"❌ Failed to process category {category}")
+                return {'category': category, 'success': False, 'error': 'Processing failed'}
+                
+        except Exception as e:
+            logger.error(f"❌ Error processing category {category}: {e}")
+            return {'category': category, 'success': False, 'error': str(e)}
+    
+    # Process categories in parallel
+    with ThreadPoolExecutor(max_workers=category_workers) as executor:
+        # Submit all category processing tasks
+        future_to_category = {
+            executor.submit(process_category_worker, category): category 
+            for category in categories
+        }
+        
+        # Process completed tasks
+        for future in as_completed(future_to_category):
+            category = future_to_category[future]
+            try:
+                result = future.result(timeout=600)  # 10 minute timeout per category
+                if result['success']:
+                    completed_categories.append(result)
+                else:
+                    failed_categories.append(result)
+            except Exception as e:
+                logger.error(f"❌ Category {category} timed out or failed: {e}")
+                failed_categories.append({'category': category, 'success': False, 'error': str(e)})
+    
+    # Summary
+    logger.info(f"✅ Completed all categories for {property_id}")
+    logger.info(f"📊 Results: {len(completed_categories)} successful, {len(failed_categories)} failed")
+    logger.info(f"💰 Total cost: ${total_cost:.4f}")
+    
+    return {
+        'success': len(failed_categories) == 0,
+        'completed': completed_categories,
+        'failed': failed_categories,
+        'total_cost': total_cost
+    }
 
 def process_all_local_properties(seed_data_path, prompt, schemas=None, batch_size=3, max_workers=3):
     """Process all properties from local categorized folders"""
@@ -2679,7 +2782,9 @@ def main():
     parser.add_argument('--all-properties', action='store_true', help='Process all properties from seed.csv')
     parser.add_argument('--local-folders', action='store_true', help='Process from local categorized folders')
     parser.add_argument('--batch-size', type=int, default=10, help='Batch size for processing (default: 10 - OpenAI limit)')
-    parser.add_argument('--max-workers', type=int, default=3, help='Maximum workers for parallel processing (default: 3 for Colab)')
+    parser.add_argument('--max-workers', type=int, default=12, help='Maximum workers for parallel processing (default: 12 for high performance)')
+    parser.add_argument('--parallel-categories', action='store_true', help='Process categories in parallel instead of sequentially')
+    parser.add_argument('--category-workers', type=int, default=12, help='Number of category workers for parallel processing (default: 12)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
     
     args = parser.parse_args()
@@ -2767,8 +2872,13 @@ def main():
             return
         
         prompt = load_optimized_json_schema_prompt(None, schemas)
-        success = process_all_local_properties_from_folders(property_folders, prompt, schemas, 
-                                                         batch_size=args.batch_size, max_workers=args.max_workers)
+        success = process_all_local_properties_from_folders(
+            property_folders, prompt, schemas, 
+            batch_size=args.batch_size, 
+            max_workers=args.max_workers,
+            parallel_categories=args.parallel_categories,
+            category_workers=args.category_workers
+        )
         if success:
             logger.info("🎉 Local folder processing completed successfully!")
         else:
@@ -2947,24 +3057,7 @@ def process_s3_folder_no_batching(folder_name, prompt, schemas=None):
                 print(f"    [DEBUG] Generating/updating object files")
                 object_files = merge_and_update_object_files_s3(result, image_objects, output_dir, 1)
                 
-                # Create property.json file using IPFS schema
-                print(f"    [DEBUG] Creating property.json file")
-                
-                # Fetch property schema from IPFS
-                property_schema = fetch_schema_from_ipfs(IPFS_SCHEMA_CIDS["property"])
-                if not property_schema:
-                    print(f"    [!] ERROR: Could not fetch property schema from IPFS CID {IPFS_SCHEMA_CIDS['property']}")
-                    print(f"    [!] Exiting due to missing property schema")
-                    sys.exit(1)
-                
-                # Create simple property.json with just parcel_id (no wrapper)
-                property_data = {
-                    "parcel_id": property_id
-                }
-                property_path = os.path.join(output_dir, "property.json")
-                with open(property_path, "w") as f:
-                    json.dump(property_data, f, indent=2)
-                print(f"    [✔] Saved: property.json")
+                # Skip property.json creation as requested
                 
                 # Generate individual relationship files
                 print(f"    [DEBUG] Generating individual relationship files")
@@ -3012,14 +3105,13 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
 
     # Create property -> file relationships for images (simplified)
     for image_cid, filename in image_cids.items():
-        rel_filename = f"relationship_property_file_{image_cid}.json"
+        rel_filename = f"relationship_property_file_{filename}"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Simplified relationship structure
+        # Correct relationship structure with property.json reference
         relationship_data = {
-            "from": {"path": "./property.json"},
-            "to": {"path": f"./{filename}"},
-            "type": "property_has_file"
+            "from": {"/": "./property.json"},
+            "to": {"/": f"./{filename}"}
         }
         
         with open(rel_path, "w") as f:
@@ -3035,11 +3127,10 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Simplified relationship structure
+        # Correct relationship structure with property.json reference
         relationship_data = {
-            "from": {"path": "./property.json"},
-            "to": {"path": f"./{filename}"},
-            "type": f"property_has_{obj_type}"
+            "from": {"/": "./property.json"},
+            "to": {"/": f"./{filename}"}
         }
         
         with open(rel_path, "w") as f:
@@ -3055,11 +3146,10 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Simplified relationship structure
+        # Correct relationship structure with property.json reference
         relationship_data = {
-            "from": {"path": "./property.json"},
-            "to": {"path": f"./{filename}"},
-            "type": "property_has_layout"
+            "from": {"/": "./property.json"},
+            "to": {"/": f"./{filename}"}
         }
         
         with open(rel_path, "w") as f:
@@ -3075,11 +3165,10 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_appliance_{appliance_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Simplified relationship structure
+        # Correct relationship structure with property.json reference
         relationship_data = {
-            "from": {"path": "./property.json"},
-            "to": {"path": f"./{filename}"},
-            "type": "property_has_appliance"
+            "from": {"/": "./property.json"},
+            "to": {"/": f"./{filename}"}
         }
         
         with open(rel_path, "w") as f:
@@ -3099,60 +3188,52 @@ def create_main_relationship_file(relationship_files, output_dir, property_id):
     main_relationship_file = f"{RELATIONSHIP_SCHEMA_CID}.json"
     filepath = os.path.join(output_dir, main_relationship_file)
     
-    # Fetch relationship schema from IPFS
-    relationship_schema = fetch_schema_from_ipfs(RELATIONSHIP_SCHEMA_CID)
-    if not relationship_schema:
-        print("    [!] Warning: Could not fetch relationship schema from IPFS")
-        return main_relationship_file
-    
-    # Load existing relationships if file exists
-    existing_relationships = {}
+    # Load existing relationships if file exists, otherwise create new
     if os.path.exists(filepath):
         try:
             with open(filepath, "r") as f:
-                existing_relationships = json.load(f)
-            print(f"    [→] Found existing main relationship file, updating...")
+                main_relationships = json.load(f)
+            print(f"    [→] Found existing main relationship file, merging...")
         except Exception as e:
             print(f"    [!] Error reading existing main relationship file: {e}")
-            existing_relationships = {}
+            main_relationships = {
+                "label": "Photo Metadata",
+                "relationships": {}
+            }
+    else:
+        # Create new structure
+        main_relationships = {
+            "label": "Photo Metadata",
+            "relationships": {}
+        }
     
-    # Initialize relationships structure based on IPFS schema
-    # Use the actual IPFS schema structure instead of hardcoded format
-    if not existing_relationships:
-        # Create new structure based on IPFS schema
-        existing_relationships = {}
-        schema_properties = relationship_schema.get("properties", {})
-        for prop_name, prop_info in schema_properties.items():
-            if isinstance(prop_info, dict):
-                prop_type = prop_info.get("type", "string")
-                if prop_type == "array":
-                    existing_relationships[prop_name] = []
-                elif prop_type == "object":
-                    existing_relationships[prop_name] = {}
-                else:
-                    existing_relationships[prop_name] = ""
+    # Ensure label and relationships are always properly set
+    if "label" not in main_relationships or not main_relationships["label"]:
+        main_relationships["label"] = "Photo Metadata"
+    if "relationships" not in main_relationships:
+        main_relationships["relationships"] = {}
     
-    # Simplified relationship processing for speed
+    # Group relationships by type
     for relationship_file in relationship_files:
-        # Get relationship type directly from the type field
         relationship_type = relationship_file.get("type", "unknown")
         
-        # Add the relationship with simplified format
-        if relationship_type not in existing_relationships.get("relationships", {}):
-            existing_relationships.setdefault("relationships", {})[relationship_type] = []
+        # Initialize the relationship type array if it doesn't exist
+        if relationship_type not in main_relationships["relationships"]:
+            main_relationships["relationships"][relationship_type] = []
         
+        # Add the relationship entry with simple reference
         relationship_entry = {
             "/": f"./{relationship_file['filename']}"
         }
         
-        # Check if this relationship already exists
-        existing_filenames = [rel.get("/", "").replace("./", "") for rel in existing_relationships.get("relationships", {}).get(relationship_type, [])]
+        # Check if this relationship already exists to avoid duplicates
+        existing_filenames = [rel.get("/", "").replace("./", "") for rel in main_relationships["relationships"][relationship_type]]
         if relationship_file['filename'] not in existing_filenames:
-            existing_relationships["relationships"][relationship_type].append(relationship_entry)
+            main_relationships["relationships"][relationship_type].append(relationship_entry)
     
-    # Save the updated main relationship file
+    # Save the main relationship file
     with open(filepath, "w") as f:
-        json.dump(existing_relationships, f, indent=2)
+        json.dump(main_relationships, f, indent=2)
     
     print(f"    [✔] Updated: {main_relationship_file}")
     return main_relationship_file
@@ -3313,30 +3394,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
                 print(f"    [DEBUG] Generating/updating object files")
                 object_files = merge_and_update_object_files_s3(result, image_objects, output_dir, 1)
                 
-                # Create property.json file (only if it doesn't exist)
-                property_path = os.path.join(output_dir, "property.json")
-                if not os.path.exists(property_path):
-                    print(f"    [DEBUG] Creating property.json file")
-                    property_data = {
-                        "parcel_id": property_id
-                    }
-                    with open(property_path, "w") as f:
-                        json.dump(property_data, f, indent=2)
-                    print(f"    [✔] Saved: property.json")
-                else:
-                    # Update existing property.json to include this subfolder
-                    try:
-                        with open(property_path, "r") as f:
-                            property_data = json.load(f)
-                        if "subfolders" not in property_data["properties"]:
-                            property_data["properties"]["subfolders"] = []
-                        if subfolder not in property_data["properties"]["subfolders"]:
-                            property_data["properties"]["subfolders"].append(subfolder)
-                        with open(property_path, "w") as f:
-                            json.dump(property_data, f, indent=2)
-                        print(f"    [✔] Updated: property.json (added {subfolder})")
-                    except Exception as e:
-                        print(f"    [!] Error updating property.json: {e}")
+                # Skip property.json creation as requested
                 
                 # Generate individual relationship files
                 print(f"    [DEBUG] Generating individual relationship files")
@@ -3369,7 +3427,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=3):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=12):
     """Process images from local categorized folders with optimized settings for Colab"""
     start_time = time.time()
     
@@ -3412,14 +3470,13 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
                     # Generate individual object files
                     object_files = generate_individual_object_files(result, image_files, output_dir, 1)
                     
-                    # Generate relationships
-                    property_cid = generate_placeholder_cid("property", property_id)
-                    relationship_files = generate_relationships_from_object_files(
-                        object_files, image_files, property_cid, 1, local_folder_path
-                    )
+                    # Generate individual relationship files
+                    property_cid = generate_clean_cid("property", property_id.replace("/", "_").replace(" ", "_"))
+                    relationship_schema = schemas.get("relationship") if schemas else None
+                    relationships = generate_individual_relationship_files_s3(object_files, image_files, property_cid, property_id, relationship_schema, output_dir)
                     
                     # Create main relationship file
-                    create_main_relationship_file(relationship_files, output_dir, property_id)
+                    create_main_relationship_file(relationships, output_dir, property_id)
                     
                     elapsed = time.time() - start_time
                     logger.info(f"✅ Successfully processed {len(image_files)} images in {elapsed:.1f}s")
@@ -3475,15 +3532,13 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
             # Generate individual object files
             object_files = generate_individual_object_files(merged_result, image_files, output_dir, 1)
             
-            # Generate relationships
-            property_cid = generate_placeholder_cid("property", property_id)
+            # Generate individual relationship files
+            property_cid = generate_clean_cid("property", property_id.replace("/", "_").replace(" ", "_"))
             relationship_schema = schemas.get("relationship") if schemas else None
-            relationship_files = generate_relationships_from_object_files(
-                object_files, image_files, property_cid, 1, local_folder_path, relationship_schema
-            )
+            relationships = generate_individual_relationship_files_s3(object_files, image_files, property_cid, property_id, relationship_schema, output_dir)
             
             # Create main relationship file
-            create_main_relationship_file(relationship_files, output_dir, property_id)
+            create_main_relationship_file(relationships, output_dir, property_id)
             
             elapsed = time.time() - start_time
             logger.info(f"✅ Successfully processed {len(image_files)} images in {elapsed:.1f}s")
@@ -3571,29 +3626,7 @@ def process_s3_subfolder_multi_threaded(property_id, category, prompt, schemas=N
             traceback.print_exc()
             object_files = {}
         
-        # Create or update property.json file
-        property_path = os.path.join(output_dir, "property.json")
-        property_data = {
-            "parcel_id": property_id
-        }
-        
-        # Update existing property.json if it exists
-        if os.path.exists(property_path):
-            try:
-                with open(property_path, "r") as f:
-                    existing_data = json.load(f)
-                if "categories" not in existing_data["properties"]:
-                    existing_data["properties"]["categories"] = []
-                if category not in existing_data["properties"]["categories"]:
-                    existing_data["properties"]["categories"].append(category)
-                property_data = existing_data
-            except Exception as e:
-                print(f"    [WARNING] Could not read existing property.json: {e}")
-        
-        # Write property.json
-        with open(property_path, "w") as f:
-            json.dump(property_data, f, indent=2)
-        print(f"    [✔] Saved: property.json")
+        # Skip property.json creation as requested
         
         # Generate individual relationship files
         print(f"    [DEBUG] Generating individual relationship files")

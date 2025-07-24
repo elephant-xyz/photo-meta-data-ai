@@ -1,0 +1,293 @@
+{
+  "label": "Photo Metadata",
+  "relationships": {
+    "property_has_file": [
+      {
+        "/": "./relationship_property_file_file_045-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_044-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_035-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_036-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_043-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_032-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_033-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_040-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_041-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_034-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_031-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_068-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_004-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_057-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_070-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_056-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_003-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_050-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_002-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_051-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_058-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_061-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_060-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_046-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_059-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_066-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_067-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_006-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_055-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_007-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_054-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_001-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_052-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_039-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_053-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_009-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_063-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_062-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_008-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_064-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_029-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_065-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_048-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_071-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_005-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_073-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_072-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_074-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_049-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_025-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_069-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_047-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_015-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_013-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_012-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_018-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_027-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_016-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_017-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_011-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_028-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_010-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_022-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_023-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_024-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_014-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_019-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_020-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_021-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_038-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_026-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_030-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_042-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      },
+      {
+        "/": "./relationship_property_file_file_037-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+      }
+    ],
+    "property_has_structure": [
+      {
+        "/": "./relationship_property_structure.json"
+      }
+    ],
+    "property_has_lot": [
+      {
+        "/": "./relationship_property_lot.json"
+      }
+    ],
+    "property_has_utility": [
+      {
+        "/": "./relationship_property_utility.json"
+      }
+    ],
+    "property_has_layout": [
+      {
+        "/": "./relationship_property_layout_attached_garage.json"
+      },
+      {
+        "/": "./relationship_property_layout_closet.json"
+      },
+      {
+        "/": "./relationship_property_layout_laundry_room.json"
+      },
+      {
+        "/": "./relationship_property_layout_bedroom.json"
+      },
+      {
+        "/": "./relationship_property_layout_none.json"
+      },
+      {
+        "/": "./relationship_property_layout_office.json"
+      },
+      {
+        "/": "./relationship_property_layout_living_room.json"
+      },
+      {
+        "/": "./relationship_property_layout_primary_bedroom.json"
+      },
+      {
+        "/": "./relationship_property_layout_dining_room.json"
+      },
+      {
+        "/": "./relationship_property_layout_home_office.json"
+      }
+    ],
+    "property_has_appliance": [
+      {
+        "/": "./relationship_property_appliance_none.json"
+      },
+      {
+        "/": "./relationship_property_appliance_washing_machine.json"
+      },
+      {
+        "/": "./relationship_property_appliance_refrigerator.json"
+      },
+      {
+        "/": "./relationship_property_appliance_microwave.json"
+      },
+      {
+        "/": "./relationship_property_appliance_oven.json"
+      }
+    ]
+  }
+}

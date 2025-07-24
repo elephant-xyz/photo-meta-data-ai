@@ -33,6 +33,7 @@ setup(
             "quality-assessment=src.quality_assessment:main",
             "upload-to-s3=src.uploadtoS3:main",
             "property-summarizer=src.property_summarizer:main",
+            "fix-submit-local=fix_and_submit_local:main",
         ],
     },
     classifiers=[

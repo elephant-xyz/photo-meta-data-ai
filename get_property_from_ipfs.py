@@ -29,9 +29,9 @@ def fetch_from_ipfs(cid):
 
 def get_first_property_cid_from_upload_results():
     """Get the first property CID from upload_results.csv"""
-    print("📊 Reading upload_results.csv...")
+    print("📊 Reading upload-results.csv...")
     
-    csv_file = "upload_results.csv"
+    csv_file = "upload-results.csv"
     if not os.path.exists(csv_file):
         print(f"❌ {csv_file} not found!")
         return None
@@ -41,7 +41,7 @@ def get_first_property_cid_from_upload_results():
         print(f"✅ Loaded {len(df)} records from {csv_file}")
         
         if len(df) == 0:
-            print("❌ No records found in upload_results.csv")
+            print("❌ No records found in upload-results.csv")
             return None
         
         # Get the first property CID
@@ -150,8 +150,8 @@ def main():
             print(f"❌ Failed to process {ipfs_url}")
         return
     
-    # Get the first property CID from upload_results.csv
-    print("📊 Getting first property CID from upload_results.csv")
+    # Get the first property CID from upload-results.csv
+    print("📊 Getting first property CID from upload-results.csv")
     
     property_cid = get_first_property_cid_from_upload_results()
     if not property_cid:

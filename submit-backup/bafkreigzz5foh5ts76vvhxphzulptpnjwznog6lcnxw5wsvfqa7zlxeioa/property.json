@@ -1,0 +1,13 @@
+{
+  "source_http_request": {
+    "method": "GET",
+    "url": "https://pbcpao.gov/Property/Details"
+  },
+  "request_identifier": "52434205310037080",
+  "livable_floor_area": "1160",
+  "number_of_units_type": "One",
+  "parcel_identifier": "52434205310037080",
+  "property_legal_description_text": "SEA LOFTERS COND              UNIT E  BLDG 3",
+  "property_structure_built_year": 1980,
+  "property_type": "Condominium"
+}

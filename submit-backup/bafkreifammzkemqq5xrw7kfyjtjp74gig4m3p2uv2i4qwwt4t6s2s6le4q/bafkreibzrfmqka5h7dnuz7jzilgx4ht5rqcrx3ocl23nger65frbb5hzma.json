@@ -1,0 +1,128 @@
+{
+  "label": "Photo Metadata",
+  "relationships": {
+    "property_has_file": [
+      {
+        "/": "./relationship_property_file_file_013-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_001-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_002-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_003-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_025-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_018-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_012-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_015-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_016-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_017-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_009-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_010-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_024-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_023-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_022-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_005-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_004-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_007-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_006-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_019-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_008-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_011-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_014-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_file_file_020-1605US1-3E-Jupiter-FL-33477-SMALL_jpg_photo_metadata.json"
+      }
+    ],
+    "property_has_utility": [
+      {
+        "/": "./relationship_property_utility_photo_metadata.json"
+      }
+    ],
+    "property_has_layout": [
+      {
+        "/": "./relationship_property_layout_full_bathroom_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_walk-in_closet_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_bedroom_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_bedroom_2_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_living_room_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_deck_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_layout_kitchen_photo_metadata.json"
+      }
+    ],
+    "property_has_structure": [
+      {
+        "/": "./relationship_property_structure_photo_metadata.json"
+      }
+    ],
+    "property_has_lot": [
+      {
+        "/": "./relationship_property_lot_photo_metadata.json"
+      }
+    ],
+    "property_has_appliance": [
+      {
+        "/": "./relationship_property_appliance_none_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_appliance_refrigerator_photo_metadata.json"
+      },
+      {
+        "/": "./relationship_property_appliance_oven_photo_metadata.json"
+      }
+    ]
+  }
+}

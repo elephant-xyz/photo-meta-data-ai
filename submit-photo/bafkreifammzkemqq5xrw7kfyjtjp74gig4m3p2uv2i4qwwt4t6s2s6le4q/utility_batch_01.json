@@ -1,0 +1,26 @@
+{
+  "cooling_system_type": null,
+  "electrical_panel_capacity": null,
+  "electrical_wiring_type": null,
+  "electrical_wiring_type_other_description": null,
+  "heating_system_type": null,
+  "hvac_condensing_unit_present": null,
+  "hvac_unit_condition": null,
+  "hvac_unit_issues": null,
+  "plumbing_system_type": null,
+  "plumbing_system_type_other_description": null,
+  "public_utility_type": null,
+  "request_identifier": null,
+  "sewer_type": null,
+  "smart_home_features": [],
+  "smart_home_features_other_description": null,
+  "solar_inverter_visible": null,
+  "solar_panel_present": null,
+  "solar_panel_type": null,
+  "solar_panel_type_other_description": null,
+  "source_http_request": {
+    "method": "GET",
+    "url": "https://pbcpao.gov/Property/Details"
+  },
+  "water_source_type": null
+}

@@ -1,0 +1,8 @@
+{
+  "from": {
+    "/": "./property.json"
+  },
+  "to": {
+    "/": "./layout_walk-in_closet_batch_01.json"
+  }
+}

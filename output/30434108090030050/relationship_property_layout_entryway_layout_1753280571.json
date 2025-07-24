@@ -1,9 +1,0 @@
-{
-  "from": {
-    "path": "./property.json"
-  },
-  "to": {
-    "path": "./layout_entryway_layout_1753280571.json"
-  },
-  "type": "property_has_layout"
-}

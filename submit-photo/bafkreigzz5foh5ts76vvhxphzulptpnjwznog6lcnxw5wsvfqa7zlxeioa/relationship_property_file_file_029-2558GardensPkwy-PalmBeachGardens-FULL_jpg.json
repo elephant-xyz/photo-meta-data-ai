@@ -1,0 +1,8 @@
+{
+  "from": {
+    "/": "./property.json"
+  },
+  "to": {
+    "/": "./file_029-2558GardensPkwy-PalmBeachGardens-FULL_jpg.json"
+  }
+}

@@ -31,7 +31,7 @@ def get_property_cid_from_csv(parcel_id):
     """Get the property CID from upload_results.csv using the parcel ID"""
     print(f"🔍 Getting property CID for parcel ID: {parcel_id}")
     
-    csv_file = "upload_results.csv"
+    csv_file = "upload-results.csv"
     if not os.path.exists(csv_file):
         print(f"❌ {csv_file} not found!")
         return None
