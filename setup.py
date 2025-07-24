@@ -31,6 +31,7 @@ setup(
             "ai-analyzer-quality=src.ai_image_analysis_with_quality_duplicate_detection:main",
             "bucket-manager=src.bucket_manager:main",
             "folder-setup=src.colab_folder_setup:main",
+            "colab-folder-setup=src.colab_folder_setup:main",
             "quality-assessment=src.quality_assessment:main",
             "upload-to-s3=src.uploadtoS3:main",
             "property-summarizer=src.property_summarizer:main",
