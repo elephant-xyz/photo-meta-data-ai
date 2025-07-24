@@ -153,7 +153,6 @@ def create_folders_and_cid_files(property_data, base_path="."):
     
     # Create subfolders and CID files for each property
     created_image_folders = []
-    created_cid_files = []
     
     for property_id, property_cid in property_data.items():
         # Clean up property_id
@@ -170,28 +169,9 @@ def create_folders_and_cid_files(property_data, base_path="."):
         os.makedirs(output_folder_path_property, exist_ok=True)
         logger.info(f"✓ Created output folder: {folder_name}")
         
-        try:
-            # Follow IPFS chain to get the final JSON content
-            logger.info(f"\n🔍 Following IPFS chain for property {property_id}:")
-            final_cid, final_json = follow_ipfs_chain(property_cid)
-            
-            if final_cid and final_json:
-                # Create property CID file with the final CID in output folder
-                cid_filename = f"{final_cid}.json"
-                cid_file_path = os.path.join(output_folder_path_property, cid_filename)
-                
-                with open(cid_file_path, 'w') as f:
-                    json.dump(final_json, f, indent=2)
-                
-                created_cid_files.append(cid_filename)
-                logger.info(f"✓ Created CID file: {cid_filename} in output/{folder_name}/")
-            else:
-                logger.warning(f"⚠️  Could not retrieve JSON for property {property_id}")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to create CID file for {folder_name}: {e}")
     
-    return created_image_folders, created_cid_files
+    
+    return created_image_folders
 
 def main():
     """Main function for Colab"""
