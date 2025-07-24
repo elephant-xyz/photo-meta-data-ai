@@ -1,11 +1,11 @@
 {
   "cabinet_style": null,
-  "clutter_level": "Staged",
-  "condition_issues": null,
+  "clutter_level": "Moderate",
+  "condition_issues": "None",
   "countertop_material": null,
   "decor_elements": "Tray Ceiling",
   "design_style": "Modern",
-  "fixture_finish_quality": null,
+  "fixture_finish_quality": "Mid-range",
   "floor_level": "1st Floor",
   "flooring_material_type": "Carpet",
   "flooring_wear": "Good",
@@ -30,6 +30,6 @@
   "view_type": "Garden",
   "visible_damage": null,
   "window_design_type": "DoubleHung",
-  "window_material_type": "Vinyl",
+  "window_material_type": "Glass",
   "window_treatment_type": "Blinds"
 }

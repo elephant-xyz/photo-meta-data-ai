@@ -13,7 +13,7 @@
   "has_windows": false,
   "is_exterior": false,
   "is_finished": true,
-  "lighting_features": "None",
+  "lighting_features": null,
   "natural_light_quality": "None",
   "paint_condition": "Good",
   "pool_condition": null,
@@ -29,7 +29,7 @@
   "space_type": "Closet",
   "view_type": null,
   "visible_damage": null,
-  "window_design_type": "None",
-  "window_material_type": "None",
-  "window_treatment_type": "None"
+  "window_design_type": null,
+  "window_material_type": null,
+  "window_treatment_type": null
 }

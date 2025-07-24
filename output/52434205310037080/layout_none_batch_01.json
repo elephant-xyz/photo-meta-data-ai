@@ -12,7 +12,7 @@
   "furnished": null,
   "has_windows": null,
   "is_exterior": false,
-  "is_finished": null,
+  "is_finished": false,
   "lighting_features": null,
   "natural_light_quality": null,
   "paint_condition": null,
