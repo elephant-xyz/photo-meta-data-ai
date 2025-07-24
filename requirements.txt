@@ -1,0 +1,24 @@
+# Photo Metadata AI Dependencies
+# Core AWS and OpenAI
+boto3>=1.26.0
+botocore>=1.29.0
+openai>=1.0.0
+
+# Environment and HTTP
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Image processing
+Pillow>=10.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Data processing
+pandas>=2.0.0
+
+# Utilities (built into Python 3.2+)
+# concurrent-futures and pathlib are part of standard library
+
+# Development dependencies (optional)
+setuptools>=45
+wheel>=0.37.0 
