@@ -4,6 +4,8 @@
 - **Install dependencies**: `pip install -e .` or `pip install -r requirements.txt`
 - **Run scripts**: Use project scripts defined in pyproject.toml (e.g., `photo-categorizer`, `ai-analyzer`)
 - **Python version**: Requires Python >= 3.11
+- **Run tests**: `uv run pytest` or `uv run pytest tests/test_photo_data_processor.py::TestUtilityFunctions::test_is_image_file`
+- **Run with coverage**: `uv run pytest --cov=src --cov-report=term-missing`
 
 ## Code Style Guidelines
 - **Imports**: Standard library first, then third-party, then local imports. Use absolute imports for src modules
