@@ -1,3 +1,0 @@
-parcel_id,Address,method,headers,url,multiValueQueryString,body,json,source_identifier,County
-30434108090030050,"1605 S US HIGHWAY 1 3E,PALM BEACH GARDENS","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["30434108090030050"]},,,30434108090030050,palm beach
-52434205310037080,"2558 GARDENS PKWY,JUPITER","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["52434205310037080"]},,,52434205310037080,palm beach 

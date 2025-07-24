@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./property.json"
-  },
-  "to": {
-    "/": "./appliance_none_batch_01.json"
-  }
-}

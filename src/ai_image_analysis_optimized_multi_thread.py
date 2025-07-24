@@ -91,7 +91,7 @@ IPFS_SCHEMA_CIDS = {
 }
 
 # Relationship schema CID
-RELATIONSHIP_SCHEMA_CID = "bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma"
+RELATIONSHIP_SCHEMA_CID = "bafkreih226p5vjhx33jwgq7trblyplfw7yhkununuuahgpfok3hnh5mjwq"
 
 
 SCHEMA_FOLDER = "schema"

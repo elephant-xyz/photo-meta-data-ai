@@ -486,7 +486,7 @@ def trace_relationship_to_data_file(error_path, submit_dir):
             # Find the main relationship file
             main_relationship_file = None
             for filename in os.listdir(submit_dir):
-                if filename.startswith('bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma'):
+                if filename.startswith('bafkreih226p5vjhx33jwgq7trblyplfw7yhkununuuahgpfok3hnh5mjwq'):
                     main_relationship_file = os.path.join(submit_dir, filename)
                     break
             

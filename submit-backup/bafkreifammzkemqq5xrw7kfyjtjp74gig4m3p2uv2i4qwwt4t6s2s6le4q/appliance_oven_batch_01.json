@@ -1,9 +1,0 @@
-{
-  "appliance_type": "Oven",
-  "finish": "Stainless Steel",
-  "request_identifier": "30434108090030050",
-  "source_http_request": {
-    "method": "GET",
-    "url": "https://pbcpao.gov/Property/Details"
-  }
-}
