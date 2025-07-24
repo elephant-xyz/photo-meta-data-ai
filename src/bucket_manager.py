@@ -18,23 +18,19 @@ from dotenv import load_dotenv
 class BucketManager:
     def __init__(self):
         self.s3_client = None
-        self.bucket_name = os.getenv('S3_BUCKET_NAME', 'photo-metadata-ai')
-        
+        self.bucket_name = os.getenv("S3_BUCKET_NAME", "photo-metadata-ai")
+
         # Load environment variables from .env file
         self.load_environment()
-        
+
         # Setup logging
         self.setup_logging()
 
     def load_environment(self):
         """Load environment variables from .env file"""
         # Try to load from .env file
-        env_paths = [
-            '.env',
-            '/content/.env',
-            os.path.expanduser('~/.env')
-        ]
-        
+        env_paths = [".env", "/content/.env", os.path.expanduser("~/.env")]
+
         env_loaded = False
         for env_path in env_paths:
             if os.path.exists(env_path):
@@ -42,35 +38,35 @@ class BucketManager:
                 # Environment loaded successfully (no console output)
                 env_loaded = True
                 break
-        
+
         if not env_loaded:
             # No .env file found (no console output)
             pass
-        
+
         return env_loaded
 
     def setup_logging(self):
         """Setup logging configuration"""
         # Create logs directory if it doesn't exist
-        os.makedirs('logs', exist_ok=True)
-        
+        os.makedirs("logs", exist_ok=True)
+
         # Configure logging
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(levelname)s - %(message)s",
             handlers=[
-                logging.FileHandler('logs/bucket-manager.log')
+                logging.FileHandler("logs/bucket-manager.log")
                 # Removed StreamHandler to only log to files
-            ]
+            ],
         )
         self.logger = logging.getLogger(__name__)
 
     def authenticate_aws(self):
         """Authenticate with AWS services"""
         try:
-            aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-            aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-            aws_region = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
+            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+            aws_region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
             if not aws_access_key or not aws_secret_key:
                 self.logger.error("Error: AWS credentials not found in environment variables!")
@@ -82,15 +78,11 @@ class BucketManager:
 
             # Initialize S3 client
             self.s3_client = boto3.client(
-                's3',
+                "s3",
                 aws_access_key_id=aws_access_key,
                 aws_secret_access_key=aws_secret_key,
                 region_name=aws_region,
-                config=Config(
-                    retries=dict(
-                        max_attempts=3
-                    )
-                )
+                config=Config(retries=dict(max_attempts=3)),
             )
 
             # Test connection
@@ -110,8 +102,8 @@ class BucketManager:
             self.s3_client.head_bucket(Bucket=bucket_name)
             return True
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == '404':
+            error_code = e.response["Error"]["Code"]
+            if error_code == "404":
                 return False
             else:
                 self.logger.error(f"Error checking bucket {bucket_name}: {e}")
@@ -120,7 +112,7 @@ class BucketManager:
     def create_bucket(self, bucket_name, region=None):
         """Create S3 bucket with proper configuration"""
         if region is None:
-            region = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
+            region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
         try:
             # Check if bucket already exists
@@ -131,18 +123,17 @@ class BucketManager:
             self.logger.info(f"Creating bucket '{bucket_name}' in region '{region}'...")
 
             # Create bucket
-            if region == 'us-east-1':
+            if region == "us-east-1":
                 # us-east-1 is the default region, no LocationConstraint needed
                 self.s3_client.create_bucket(Bucket=bucket_name)
             else:
                 self.s3_client.create_bucket(
-                    Bucket=bucket_name,
-                    CreateBucketConfiguration={'LocationConstraint': region}
+                    Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
                 )
 
             # Configure bucket settings
             self.configure_bucket(bucket_name)
-            
+
             self.logger.info(f"✓ Successfully created bucket '{bucket_name}'")
             return True
 
@@ -154,24 +145,15 @@ class BucketManager:
         """Configure bucket with proper settings"""
         try:
             # Set bucket versioning
-            self.s3_client.put_bucket_versioning(
-                Bucket=bucket_name,
-                VersioningConfiguration={'Status': 'Enabled'}
-            )
+            self.s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
             self.logger.info(f"✓ Enabled versioning for bucket '{bucket_name}'")
 
             # Set bucket encryption
             self.s3_client.put_bucket_encryption(
                 Bucket=bucket_name,
                 ServerSideEncryptionConfiguration={
-                    'Rules': [
-                        {
-                            'ApplyServerSideEncryptionByDefault': {
-                                'SSEAlgorithm': 'AES256'
-                            }
-                        }
-                    ]
-                }
+                    "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+                },
             )
             self.logger.info(f"✓ Enabled encryption for bucket '{bucket_name}'")
 
@@ -179,11 +161,11 @@ class BucketManager:
             self.s3_client.put_public_access_block(
                 Bucket=bucket_name,
                 PublicAccessBlockConfiguration={
-                    'BlockPublicAcls': True,
-                    'IgnorePublicAcls': True,
-                    'BlockPublicPolicy': True,
-                    'RestrictPublicBuckets': True
-                }
+                    "BlockPublicAcls": True,
+                    "IgnorePublicAcls": True,
+                    "BlockPublicPolicy": True,
+                    "RestrictPublicBuckets": True,
+                },
             )
             self.logger.info(f"✓ Set private access for bucket '{bucket_name}'")
 
@@ -196,23 +178,13 @@ class BucketManager:
                         "Effect": "Deny",
                         "Principal": "*",
                         "Action": "s3:*",
-                        "Resource": [
-                            f"arn:aws:s3:::{bucket_name}",
-                            f"arn:aws:s3:::{bucket_name}/*"
-                        ],
-                        "Condition": {
-                            "Bool": {
-                                "aws:SecureTransport": "false"
-                            }
-                        }
+                        "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
+                        "Condition": {"Bool": {"aws:SecureTransport": "false"}},
                     }
-                ]
+                ],
             }
 
-            self.s3_client.put_bucket_policy(
-                Bucket=bucket_name,
-                Policy=json.dumps(bucket_policy)
-            )
+            self.s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(bucket_policy))
             self.logger.info(f"✓ Applied security policy to bucket '{bucket_name}'")
 
         except ClientError as e:
@@ -236,7 +208,7 @@ class BucketManager:
         """List all buckets accessible to the user"""
         try:
             response = self.s3_client.list_buckets()
-            buckets = [bucket['Name'] for bucket in response['Buckets']]
+            buckets = [bucket["Name"] for bucket in response["Buckets"]]
             self.logger.info(f"Available buckets: {buckets}")
             return buckets
         except ClientError as e:
@@ -251,29 +223,29 @@ class BucketManager:
         try:
             # Get bucket location
             location = self.s3_client.get_bucket_location(Bucket=bucket_name)
-            
+
             # Get bucket versioning
             versioning = self.s3_client.get_bucket_versioning(Bucket=bucket_name)
-            
+
             # Get bucket encryption
             encryption = self.s3_client.get_bucket_encryption(Bucket=bucket_name)
-            
+
             # Get public access block
             public_access = self.s3_client.get_public_access_block(Bucket=bucket_name)
 
             info = {
-                'name': bucket_name,
-                'region': location.get('LocationConstraint') or 'us-east-1',
-                'versioning': versioning.get('Status', 'NotEnabled'),
-                'encryption': encryption.get('ServerSideEncryptionConfiguration', {}),
-                'public_access': public_access.get('PublicAccessBlockConfiguration', {})
+                "name": bucket_name,
+                "region": location.get("LocationConstraint") or "us-east-1",
+                "versioning": versioning.get("Status", "NotEnabled"),
+                "encryption": encryption.get("ServerSideEncryptionConfiguration", {}),
+                "public_access": public_access.get("PublicAccessBlockConfiguration", {}),
             }
 
             self.logger.info(f"Bucket '{bucket_name}' information:")
             self.logger.info(f"  Region: {info['region']}")
             self.logger.info(f"  Versioning: {info['versioning']}")
-            self.logger.info(f"  Encryption: Enabled")
-            self.logger.info(f"  Public Access: Blocked")
+            self.logger.info("  Encryption: Enabled")
+            self.logger.info("  Public Access: Blocked")
 
             return info
 
@@ -285,25 +257,25 @@ class BucketManager:
 def main():
     """Main function for bucket management"""
     import argparse
-    
-    parser = argparse.ArgumentParser(description='S3 Bucket Manager for Photo Metadata AI')
-    parser.add_argument('--create', action='store_true', help='Create bucket if it does not exist')
-    parser.add_argument('--bucket-name', type=str, help='Bucket name (overrides S3_BUCKET_NAME env var)')
-    parser.add_argument('--region', type=str, help='AWS region (overrides AWS_DEFAULT_REGION env var)')
-    parser.add_argument('--info', action='store_true', help='Show bucket information')
-    parser.add_argument('--list', action='store_true', help='List all available buckets')
-    
+
+    parser = argparse.ArgumentParser(description="S3 Bucket Manager for Photo Metadata AI")
+    parser.add_argument("--create", action="store_true", help="Create bucket if it does not exist")
+    parser.add_argument("--bucket-name", type=str, help="Bucket name (overrides S3_BUCKET_NAME env var)")
+    parser.add_argument("--region", type=str, help="AWS region (overrides AWS_DEFAULT_REGION env var)")
+    parser.add_argument("--info", action="store_true", help="Show bucket information")
+    parser.add_argument("--list", action="store_true", help="List all available buckets")
+
     args = parser.parse_args()
 
     # Setup logging
-    os.makedirs('logs', exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler('logs/bucket-manager.log')
+            logging.FileHandler("logs/bucket-manager.log")
             # Removed StreamHandler to only log to files
-        ]
+        ],
     )
     logger = logging.getLogger(__name__)
 
@@ -312,13 +284,13 @@ def main():
 
     # Override environment variables if specified
     if args.bucket_name:
-        os.environ['S3_BUCKET_NAME'] = args.bucket_name
+        os.environ["S3_BUCKET_NAME"] = args.bucket_name
     if args.region:
-        os.environ['AWS_DEFAULT_REGION'] = args.region
+        os.environ["AWS_DEFAULT_REGION"] = args.region
 
     # Initialize bucket manager
     manager = BucketManager()
-    
+
     # Authenticate with AWS
     logger.info("\n1. Authenticating with AWS...")
     manager.authenticate_aws()
@@ -359,4 +331,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()
