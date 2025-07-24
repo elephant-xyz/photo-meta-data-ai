@@ -41,7 +41,8 @@ cd photo-meta-data-ai
 ./install.sh
 
 # Or install manually
-pip install -e .
+uv sync
+
 ```
 
 ### Manual Installation
@@ -52,6 +53,9 @@ pip install -r requirements.txt
 
 # Install the package
 pip install -e .
+
+# OR
+uv sync
 
 # Run the categorizer
 photo-categorizer
@@ -71,6 +75,7 @@ export S3_BUCKET_NAME='your-bucket-name'
 ### Recent Improvements
 
 **Speed and Performance Optimizations:**
+
 - ✅ Process 3 images per batch with parallel processing (3 workers)
 - ✅ Reduced timeout to 180s maximum per API call for faster processing
 - ✅ Added 30-minute overall timeout for entire processing
@@ -81,6 +86,7 @@ export S3_BUCKET_NAME='your-bucket-name'
 ### Prepare Your Data
 
 1. **Create a `seed.csv` file** with parcel IDs and addresses:
+
 ```csv
 parcel_id,Address,method,headers,url,multiValueQueryString,body,json,source_identifier,County
 30434108090030050,"1605 S US HIGHWAY 1 3E,PALM BEACH GARDENS","GET",,"https://pbcpao.gov/Property/Details",{"parcelId":["30434108090030050"]},,,30434108090030050,palm beach
@@ -88,6 +94,7 @@ parcel_id,Address,method,headers,url,multiValueQueryString,body,json,source_iden
 ```
 
 2. **Create a folder structure** with parcel IDs as folder names:
+
 ```
 images/
 ├── 30434108090030050/
@@ -124,8 +131,6 @@ ai-analyzer --property-id 30434108090030050
 ai-analyzer --all-properties --batch-size 10 --max-workers 5
 ```
 
-
-
 ### Run the Bucket Manager
 
 ```bash
@@ -143,12 +148,14 @@ bucket-manager --create --bucket-name my-custom-bucket --region us-west-2
 ```
 
 The bucket manager automatically configures:
+
 - Versioning
 - Encryption
 - Private access
 - Security policies
 
 The tool will give you three options:
+
 1. **Upload images from local folder to S3** - Only upload, don't categorize
 2. **Process existing images in S3** - Only categorize, don't upload
 3. **Upload and then process** - Upload images and then categorize them
@@ -225,6 +232,7 @@ your-bucket-name/
 ### Local Folder Structure
 
 The tool expects images to be stored locally with parcel IDs as folder names:
+
 ```
 images/
 ├── 30434108090030050/
@@ -241,6 +249,7 @@ images/
 ### S3 Bucket
 
 The tool expects images to be stored in S3 with this structure:
+
 ```
 your-bucket-name/
 ├── property-id-1/
@@ -276,12 +285,13 @@ os.environ['S3_BUCKET_NAME'] = 'your-bucket-name-here'
 **What it will do automatically:**
 
 1. 📤 **Upload**: All images from `images/` folder to S3
-2. 🔍 **Analyze**: Every image with AWS Rekognition  
+2. 🔍 **Analyze**: Every image with AWS Rekognition
 3. 🏷️ **Categorize**: All images into appropriate folders
 4. 📊 **Save Results**: JSON reports for each property
 5. 📊 **Summary**: Final report of all processed properties
 
 **No user prompts!** The tool will:
+
 - Automatically find all property folders in the images directory
 - Upload everything to S3
 - Process all properties without asking which ones
@@ -291,6 +301,7 @@ os.environ['S3_BUCKET_NAME'] = 'your-bucket-name-here'
 **Just run the code and it will process everything in your images folder automatically!**
 
 Make sure your images are organized like this:
+
 ```
 images/
 ├── property-123/
@@ -304,3 +315,4 @@ images/
     ├── office1.jpg
     └── dining1.jpg
 ```
+
