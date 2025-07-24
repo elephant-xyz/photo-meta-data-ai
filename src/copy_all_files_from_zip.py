@@ -44,11 +44,11 @@ def unzip_and_copy_all_files():
         
         logger.info("✅ Successfully unzipped submit.zip")
         
-        # Find all JSON files in the extracted content
+        # Find all JSON files in the extracted content (excluding macOS metadata files)
         json_files = []
         for root, dirs, files in os.walk(extract_dir):
             for file in files:
-                if file.endswith(".json"):
+                if file.endswith(".json") and not file.startswith("._"):
                     json_files.append(os.path.join(root, file))
         
         logger.info(f"📁 Found {len(json_files)} JSON files in submit.zip")
