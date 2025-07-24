@@ -172,9 +172,11 @@ def create_folders_and_cid_files(property_data, base_path="."):
         image_folder_path_property = os.path.join(image_folder_path, folder_name)
         os.makedirs(image_folder_path_property, exist_ok=True)
         created_image_folders.append(folder_name)
-        logger.info(f"✓ Created image folder: {folder_name}")
 
-        os.symlink(image_folder_path_property, photo_data_group_dir / property_cid)
+        relative_path = os.path.join("..", "images", folder_name)
+        symlink_path = photo_data_group_dir / property_cid
+        os.symlink(relative_path, symlink_path)
+        logger.info(f"✓ Created image folder: {folder_name}")
 
         # Create output folder for this property
         output_folder_path_property = os.path.join(output_folder_path, folder_name)
