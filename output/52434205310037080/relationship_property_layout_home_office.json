@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./layout_home_office_batch_01.json"
-  },
-  "to": {
-    "/": "./layout_home_office_batch_01.json"
-  }
-}

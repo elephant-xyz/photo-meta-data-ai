@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./layout_living_room_batch_01.json"
-  },
-  "to": {
-    "/": "./layout_living_room_batch_01.json"
-  }
-}

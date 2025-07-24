@@ -1,9 +1,0 @@
-{
-  "appliance_type": "Washing Machine",
-  "finish": "White",
-  "request_identifier": null,
-  "source_http_request": {
-    "method": "GET",
-    "url": "https://pbcpao.gov/Property/Details"
-  }
-}

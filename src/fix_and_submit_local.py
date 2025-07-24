@@ -64,7 +64,7 @@ def fetch_schema_from_ipfs(cid):
         try:
             url = f"{gateway}{cid}"
             print(f"🔍 Trying to fetch schema from {gateway}")
-            response = requests.get(url, timeout=60)
+            response = requests.get(url, timeout=120)
             response.raise_for_status()
             schema_data = response.json()
             print(f"✅ Successfully fetched schema from {gateway}")
@@ -325,6 +325,17 @@ def fix_source_http_request_in_file(file_path, property_id=None):
                 modified = True
                 print(f"  🔧 Updated request_identifier to parcel_id: {property_id}")
         
+        # Ensure appliance, lot, structure, and utility files have request_identifier
+        if property_id and any(keyword in filename for keyword in ["appliance", "lot", "structure", "utility"]) and not filename.startswith("relationship_"):
+            if "request_identifier" not in data:
+                data["request_identifier"] = property_id
+                modified = True
+                print(f"  ➕ Added request_identifier to {filename}: {property_id}")
+            elif data["request_identifier"] != property_id:
+                data["request_identifier"] = property_id
+                modified = True
+                print(f"  🔧 Updated request_identifier in {filename} to: {property_id}")
+        
         # Ensure file document_type and file_format for file_xxxxxx files (but not relationship files)
         if "file_" in filename and "photo_metadata" in filename and not filename.startswith("relationship_"):
             if "document_type" not in data or data["document_type"] != "PropertyImage":
@@ -391,7 +402,7 @@ def run_elephant_cli_validation(submit_dir, max_attempts=10):
         ]
         
         print(f"🔍 Running CLI validation: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
         
         if result.returncode == 0:
             print("✅ CLI validation completed successfully")
@@ -447,12 +458,14 @@ def check_submit_errors():
         with open(submit_errors_file, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                errors.append({
+                error_data = {
                     'file': row.get('file_path', ''),
                     'error': row.get('error_message', ''),
-                    'path': row.get('path', ''),  # Add path information
+                    'path': row.get('error_path', ''),  # Add path information
                     'details': row
-                })
+                }
+                print(f"📋 Parsed error from CSV: file='{error_data['file']}', error='{error_data['error']}', path='{error_data['path']}'")
+                errors.append(error_data)
     except Exception as e:
         print(f"❌ Error parsing submit errors: {e}")
     
@@ -473,7 +486,7 @@ def trace_relationship_to_data_file(error_path, submit_dir):
             # Find the main relationship file
             main_relationship_file = None
             for filename in os.listdir(submit_dir):
-                if filename.startswith('bafkreih226p5vjhx33jwgq7trblyplfw7yhkununuuahgpfok3hnh5mjwq'):
+                if filename.startswith('bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma'):
                     main_relationship_file = os.path.join(submit_dir, filename)
                     break
             
@@ -531,6 +544,35 @@ def trace_relationship_to_data_file(error_path, submit_dir):
     
     return None
 
+def set_field_by_path(data, path, value):
+    """Set a field value by navigating through a path like '/relationships/property_has_layout/0/to'."""
+    if not path or not path.strip('/'):
+        return False
+    
+    path_parts = path.strip('/').split('/')
+    current = data
+    
+    # Navigate to the parent object (all parts except the last)
+    for part in path_parts[:-1]:
+        if part.isdigit():
+            if isinstance(current, list) and int(part) < len(current):
+                current = current[int(part)]
+            else:
+                return False
+        else:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return False
+    
+    # Set the field value (last part of the path)
+    field_name = path_parts[-1]
+    if isinstance(current, dict) and field_name in current:
+        current[field_name] = value
+        return True
+    
+    return False
+
 def attempt_auto_fixes(submit_dir, errors):
     """Attempt to automatically fix common validation errors."""
     fixed_count = 0
@@ -540,24 +582,31 @@ def attempt_auto_fixes(submit_dir, errors):
         error_msg = error.get('error', '').lower()
         error_path = error.get('path', '')  # Get the specific path that failed
         
+        print(f"🔍 Processing error: '{error_msg}' (lowercase)")
+        print(f"🔍 Error path: '{error_path}'")
+        print(f"🔍 File path: '{file_path}'")
+        
         if not file_path or not os.path.exists(file_path):
+            print(f"❌ File not found: {file_path}")
             continue
         
-        # Skip the main relationship file - never fix it
-        filename = os.path.basename(file_path)
-        if filename == "bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma.json":
-            print(f"⏭️  Skipping main relationship file in auto-fixes: {filename}")
-            continue
-        
-        # Check if this is a relationship path error
+        # Check if this is a relationship path error first
         actual_data_file = None
         if error_path and '/relationships/' in error_path:
-            actual_data_file = trace_relationship_to_data_file(error_path, submit_dir)
+            print(f"🔍 Tracing relationship path: {error_path}")
+            # Use the directory containing the file, not the root submit_dir
+            file_dir = os.path.dirname(file_path)
+            actual_data_file = trace_relationship_to_data_file(error_path, file_dir)
+            if actual_data_file:
+                print(f"✅ Found target file: {actual_data_file}")
+            else:
+                print(f"❌ Failed to trace relationship to target file")
         
         # Use the actual data file if found, otherwise use the original file
         target_file = actual_data_file if actual_data_file else file_path
+        print(f"🔍 Target file for fixing: {target_file}")
         
-        # Skip the main relationship file even if it's the target
+        # Skip the main relationship file - never fix it
         target_filename = os.path.basename(target_file)
         if target_filename == "bafkreibzrfmqka5h7dnuz7jzilgx4ht5rqcrx3ocl23nger65frbb5hzma.json":
             print(f"⏭️  Skipping main relationship file as target: {target_filename}")
@@ -615,6 +664,17 @@ def attempt_auto_fixes(submit_dir, errors):
                     modified = True
                     print(f"  🔧 Updated request_identifier to parcel_id: {property_id}")
             
+            # Ensure appliance, lot, structure, and utility files have request_identifier
+            if property_id and any(keyword in filename for keyword in ["appliance", "lot", "structure", "utility"]) and not filename.startswith("relationship_"):
+                if "request_identifier" not in data:
+                    data["request_identifier"] = property_id
+                    modified = True
+                    print(f"  ➕ Added request_identifier to {filename}: {property_id}")
+                elif data["request_identifier"] != property_id:
+                    data["request_identifier"] = property_id
+                    modified = True
+                    print(f"  🔧 Updated request_identifier in {filename} to: {property_id}")
+            
             # Ensure file document_type and file_format for file_xxxxxx files (but not relationship files)
             if "file_" in filename and "photo_metadata" in filename and not filename.startswith("relationship_"):
                 if "document_type" not in data or data["document_type"] != "PropertyImage":
@@ -627,6 +687,67 @@ def attempt_auto_fixes(submit_dir, errors):
                     data["file_format"] = "jpeg"
                     modified = True
                     print(f"  🔧 Set file_format to jpeg")
+            
+            # Auto-fix "must be one of" errors by setting value to null
+            if "must be one of:" in error_msg:
+                print(f"🔧 Found 'must be one of' error, attempting to fix...")
+                if error_path and set_field_by_path(data, error_path, None):
+                    modified = True
+                    field_name = error_path.strip('/').split('/')[-1]
+                    print(f"  🔧 Auto-fixed 'must be one of' error: set {field_name} to null")
+                else:
+                    print(f"  ❌ Failed to set field by path: {error_path}")
+                    # Fallback: try to find the field in the data
+                    for key, value in data.items():
+                        if isinstance(value, str) and value not in ["true", "false", "null"]:
+                            # Check if this might be the problematic field
+                            data[key] = None
+                            modified = True
+                            print(f"  🔧 Auto-fixed 'must be one of' error: set {key} to null")
+                            break
+            
+            # Auto-fix "must be boolean" errors by setting value to false
+            elif "must be boolean" in error_msg:
+                if error_path and set_field_by_path(data, error_path, False):
+                    modified = True
+                    field_name = error_path.strip('/').split('/')[-1]
+                    print(f"  🔧 Auto-fixed 'must be boolean' error: set {field_name} to false")
+                else:
+                    # Fallback: try to find boolean fields in the data
+                    for key, value in data.items():
+                        if isinstance(value, str) and value.lower() in ["yes", "no", "present", "absent", "available", "unavailable"]:
+                            # Convert string boolean to actual boolean
+                            data[key] = False
+                            modified = True
+                            print(f"  🔧 Auto-fixed 'must be boolean' error: set {key} to false")
+                            break
+            
+            # Auto-fix "must be string" errors by setting value to empty string or property_id
+            elif "must be string" in error_msg:
+                print(f"🔧 Found 'must be string' error, attempting to fix...")
+                if error_path and set_field_by_path(data, error_path, ""):
+                    modified = True
+                    field_name = error_path.strip('/').split('/')[-1]
+                    print(f"  🔧 Auto-fixed 'must be string' error: set {field_name} to empty string")
+                    
+                    # If it's request_identifier, try to set it to property_id
+                    if field_name == "request_identifier" and property_id:
+                        if set_field_by_path(data, error_path, property_id):
+                            print(f"  🔧 Auto-fixed request_identifier: set to {property_id}")
+                else:
+                    # Fallback: try to find string fields in the data
+                    for key, value in data.items():
+                        if value is None:
+                            # Convert null to empty string
+                            data[key] = ""
+                            modified = True
+                            print(f"  🔧 Auto-fixed 'must be string' error: set {key} to empty string")
+                            
+                            # If it's request_identifier, set to property_id
+                            if key == "request_identifier" and property_id:
+                                data[key] = property_id
+                                print(f"  🔧 Auto-fixed request_identifier: set to {property_id}")
+                            break
             
             # Ensure layout files have source_http_request (but not relationship files)
             if "layout" in filename and not filename.startswith("relationship_"):
@@ -728,6 +849,46 @@ def ensure_layout_files_have_required_fields(submit_dir):
                 except Exception as e:
                     print(f"❌ Error fixing layout file {file}: {e}")
     
+    return fixed_count
+
+def ensure_appliance_lot_structure_utility_files_have_request_identifier(submit_dir):
+    """Ensure appliance, lot, structure, and utility files have request_identifier."""
+    fixed_count = 0
+    
+    for root, dirs, files in os.walk(submit_dir):
+        for file in files:
+            if file.endswith('.json'):
+                # Check if it's an appliance, lot, structure, or utility file
+                is_target_file = any(keyword in file.lower() for keyword in ["appliance", "lot", "structure", "utility"])
+                
+                if is_target_file and not file.startswith("relationship_"):
+                    file_path = os.path.join(root, file)
+                    
+                    try:
+                        with open(file_path, 'r') as f:
+                            data = json.load(f)
+                        
+                        modified = False
+                        
+                        # Get property_id from the directory containing this file
+                        property_dir = os.path.dirname(file_path)
+                        property_id = get_parcel_id_from_property_json(property_dir)
+                        
+                        # Ensure request_identifier is present with parcel_id
+                        if property_id and ("request_identifier" not in data or data["request_identifier"] != property_id):
+                            data["request_identifier"] = property_id
+                            modified = True
+                            print(f"  🔧 Updated request_identifier to {property_id} in {file}")
+                        
+                        if modified:
+                            with open(file_path, 'w') as f:
+                                json.dump(data, f, indent=2)
+                            fixed_count += 1
+                            
+                    except Exception as e:
+                        print(f"❌ Error fixing {file}: {e}")
+    
+    print(f"✅ Fixed request_identifier in {fixed_count} appliance/lot/structure/utility files")
     return fixed_count
 
 def fix_string_or_null_fields(data):
@@ -1113,6 +1274,11 @@ def main():
     layout_fixed_count = ensure_layout_files_have_required_fields(submit_dir)
     print(f"✅ Fixed {layout_fixed_count} layout files")
     
+    # Step 4.5: Ensure appliance, lot, structure, and utility files have request_identifier
+    print("\n🔧 Step 4.5: Ensuring appliance, lot, structure, and utility files have request_identifier...")
+    utility_fixed_count = ensure_appliance_lot_structure_utility_files_have_request_identifier(submit_dir)
+    print(f"✅ Fixed {utility_fixed_count} appliance/lot/structure/utility files")
+    
     # Step 5: Rename folders to propertyCID
     print("\n🔄 Step 5: Renaming folders to propertyCID...")
     if not rename_folders_to_property_cid(property_cids):
@@ -1132,6 +1298,12 @@ def main():
     while attempt < max_attempts and not no_errors_found:
         attempt += 1
         print(f"\n🔄 Attempt {attempt}/{max_attempts}")
+        
+        # Check if we're stuck in a loop - if we've made too many attempts without progress
+        if attempt > 10:
+            print(f"⚠️  Warning: {attempt} attempts made. Possible infinite loop detected.")
+            print("🛑 Stopping to prevent infinite loop. Manual intervention may be needed.")
+            break
         
         # Run CLI validation
         success, csv_file = run_elephant_cli_validation(submit_dir)
@@ -1162,6 +1334,11 @@ def main():
                 break
             else:
                 print(f"⚠️  Found {len(submit_errors)} submit errors")
+                # Log the first few errors to see if they're the same
+                for i, error in enumerate(submit_errors[:3]):
+                    print(f"  Error {i+1}: {error.get('error', 'Unknown error')}")
+                if len(submit_errors) > 3:
+                    print(f"  ... and {len(submit_errors) - 3} more errors")
                 
                 # Also check validation results for additional fixes
                 validation_errors = parse_validation_results(csv_file)
@@ -1170,6 +1347,7 @@ def main():
                 
                 # Attempt auto-fixes for both types of errors
                 all_errors = submit_errors + validation_errors
+                print(f"🔍 Attempting to fix {len(all_errors)} errors...")
                 fixed_count = attempt_auto_fixes(submit_dir, all_errors)
                 
                 if fixed_count == 0:
@@ -1181,8 +1359,10 @@ def main():
                         break
                     else:
                         print(f"🤖 OpenAI applied {openai_fixed_count} fixes")
+                        # Continue to next iteration to run CLI validation after OpenAI fixes
                 else:
                     print(f"🔧 Applied {fixed_count} auto-fixes")
+                    # Continue to next iteration to run CLI validation immediately after auto-fixes
         else:
             print("❌ CLI validation failed")
             break

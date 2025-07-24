@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./lot_batch_01_photo_metadata.json"
-  },
-  "to": {
-    "/": "./lot_batch_01_photo_metadata.json"
-  }
-}

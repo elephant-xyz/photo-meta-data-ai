@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./utility_batch_01_photo_metadata.json"
-  },
-  "to": {
-    "/": "./utility_batch_01_photo_metadata.json"
-  }
-}

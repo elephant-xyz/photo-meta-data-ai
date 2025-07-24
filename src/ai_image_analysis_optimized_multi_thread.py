@@ -768,8 +768,9 @@ CRITICAL SCHEMA RULES:
 ENUM VALUE RULES:
 - For fields with ENUM values listed, you MUST use ONLY those exact values
 - Do not invent new values - use only the enum values provided
-- If you cannot determine the exact enum value, use null or the most appropriate enum value
-- Example: If pool_type has ENUM: ["in-ground", "above-ground", "none"], use only these values
+- If you cannot determine the exact enum value, use null (NOT a new value)
+- If the value you see doesn't match any enum value exactly, use null
+- Example: If pool_type has ENUM: ["in-ground", "above-ground", "none"], use only these values or null
 
 ANALYSIS INSTRUCTIONS:
 - Look for specific features in each image: furniture, appliances, room types, building materials, utilities
@@ -3108,9 +3109,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_file_{filename}"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Relationship structure without property.json reference
+        # Relationship structure with property.json reference
         relationship_data = {
-            "from": {"/": f"./{filename}"},
+            "from": {"/": "./property.json"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3127,9 +3128,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Relationship structure without property.json reference
+        # Relationship structure with property.json reference
         relationship_data = {
-            "from": {"/": f"./{filename}"},
+            "from": {"/": "./property.json"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3146,9 +3147,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Relationship structure without property.json reference
+        # Relationship structure with property.json reference
         relationship_data = {
-            "from": {"/": f"./{filename}"},
+            "from": {"/": "./property.json"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3165,9 +3166,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_appliance_{appliance_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Relationship structure without property.json reference
+        # Relationship structure with property.json reference
         relationship_data = {
-            "from": {"/": f"./{filename}"},
+            "from": {"/": "./property.json"},
             "to": {"/": f"./{filename}"}
         }
         

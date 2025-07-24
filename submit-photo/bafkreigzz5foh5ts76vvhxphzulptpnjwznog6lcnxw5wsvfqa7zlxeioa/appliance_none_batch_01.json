@@ -1,9 +1,0 @@
-{
-  "appliance_type": "None",
-  "finish": "None",
-  "request_identifier": null,
-  "source_http_request": {
-    "method": "GET",
-    "url": "https://pbcpao.gov/Property/Details"
-  }
-}

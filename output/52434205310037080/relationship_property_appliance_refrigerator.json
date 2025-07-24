@@ -1,8 +1,0 @@
-{
-  "from": {
-    "/": "./appliance_refrigerator_batch_01.json"
-  },
-  "to": {
-    "/": "./appliance_refrigerator_batch_01.json"
-  }
-}
