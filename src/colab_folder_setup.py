@@ -1,4 +1,17 @@
+#!/usr/bin/env python3
+"""
+Simple Colab folder setup script
+Run with: !folder-setup
+"""
+
+import os
+import sys
+import json
 import logging
+import requests
+import pandas as pd
+from pathlib import Path
+import argparse
 
 def setup_logging():
     """Setup logging configuration"""
@@ -10,27 +23,13 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(f'logs/{os.path.basename(file_path).replace(".py", "")}.log')
+            logging.FileHandler('logs/colab-folder-setup.log')
             # Removed StreamHandler to only log to files
         ]
     )
     return logging.getLogger(__name__)
 
 logger = setup_logging()
-
-#!/usr/bin/env python3
-"""
-Simple Colab folder setup script
-Run with: !folder-setup
-"""
-
-import os
-import sys
-import json
-import requests
-import pandas as pd
-from pathlib import Path
-import argparse
 
 def fetch_from_ipfs(cid):
     """Fetch content from IPFS using the CID"""
