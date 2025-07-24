@@ -1,6 +1,6 @@
 {
   "from": {
-    "/": "./property.json"
+    "/": "./appliance_microwave_batch_01.json"
   },
   "to": {
     "/": "./appliance_microwave_batch_01.json"

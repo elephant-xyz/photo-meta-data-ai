@@ -1,7 +1,7 @@
 {
   "cabinet_style": null,
   "clutter_level": "Moderate",
-  "condition_issues": null,
+  "condition_issues": "None",
   "countertop_material": null,
   "decor_elements": null,
   "design_style": null,
@@ -10,11 +10,11 @@
   "flooring_material_type": "Carpet",
   "flooring_wear": "Good",
   "furnished": "Partially Furnished",
-  "has_windows": null,
+  "has_windows": false,
   "is_exterior": false,
   "is_finished": true,
-  "lighting_features": null,
-  "natural_light_quality": null,
+  "lighting_features": "None",
+  "natural_light_quality": "None",
   "paint_condition": "Good",
   "pool_condition": null,
   "pool_equipment": null,
@@ -29,7 +29,7 @@
   "space_type": "Closet",
   "view_type": null,
   "visible_damage": null,
-  "window_design_type": null,
-  "window_material_type": null,
-  "window_treatment_type": null
+  "window_design_type": "None",
+  "window_material_type": "None",
+  "window_treatment_type": "None"
 }

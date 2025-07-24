@@ -1,6 +1,6 @@
 {
   "from": {
-    "/": "./property.json"
+    "/": "./layout_laundry_room_batch_01.json"
   },
   "to": {
     "/": "./layout_laundry_room_batch_01.json"

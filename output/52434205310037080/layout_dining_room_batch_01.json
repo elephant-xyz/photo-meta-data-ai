@@ -1,9 +1,9 @@
 {
-  "cabinet_style": "None",
-  "clutter_level": "Moderate",
+  "cabinet_style": "Traditional",
+  "clutter_level": "Staged",
   "condition_issues": "None",
-  "countertop_material": "None",
-  "decor_elements": "None",
+  "countertop_material": "Granite",
+  "decor_elements": "Tray Ceiling",
   "design_style": "Modern",
   "fixture_finish_quality": "Mid-range",
   "floor_level": "1st Floor",
@@ -27,9 +27,9 @@
   "source_http_request": {},
   "spa_type": null,
   "space_type": "Dining Room",
-  "view_type": "Street",
+  "view_type": "Garden",
   "visible_damage": null,
   "window_design_type": "DoubleHung",
-  "window_material_type": "Glass",
+  "window_material_type": "Vinyl",
   "window_treatment_type": "Blinds"
 }

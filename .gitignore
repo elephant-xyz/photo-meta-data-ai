@@ -134,3 +134,9 @@ credentials
 
 # Schema files
 schema/visual-tags.pdf 
+/output
+
+# Zip files
+*.zip
+submit.zip
+submit-photodata.zip
