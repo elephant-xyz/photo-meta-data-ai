@@ -37,7 +37,7 @@ setup(
             "fix-schema-validation=src.fix_schema_validation:main",
             "copy-property-files-from-zip=src.copy_property_files_from_zip:main",
             "copy-all-files-from-zip=src.copy_all_files_from_zip:main",
-            "unzip-count-data=src.unzip_count_data:main",
+            "unzip-county-data=src.unzip_count_data:main",
             "copy-all-data-for-submission=src.copy_all_data_for_submission:main",
         ],
     },
