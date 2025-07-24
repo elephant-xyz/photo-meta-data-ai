@@ -72,13 +72,15 @@ class TestIntegration:
             with open(link_path) as f:
                 link_data = json.load(f)
             
-            assert "from_cid" in link_data
-            assert "/" in link_data["from_cid"]
-            assert "to_file" in link_data
-            assert "/" in link_data["to_file"]
+            assert "from" in link_data
+            assert "/" in link_data["from"]
+            assert "to" in link_data
+            assert "/" in link_data["to"]
             
             # Verify metadata file exists
-            metadata_path = sample_photo_structure / link_data["to_file"]["/"].lstrip("./")
+            # The 'to' field is relative to the link file location
+            link_dir = link_path.parent
+            metadata_path = link_dir / link_data["to"]["/"].lstrip("./")
             assert metadata_path.exists()
             
             # Load and verify metadata content

@@ -17,6 +17,7 @@ from src.photo_data_processor import (
     RootMetadata,
     ProcessedFile,
     CIDProcessingResult,
+    IPLDReference,
     IMAGE_EXTENSIONS,
     is_image_file,
     is_not_hidden,
@@ -61,11 +62,11 @@ class TestDataStructures:
     def test_link_metadata_creation(self):
         """Test LinkMetadata NamedTuple creation"""
         metadata = LinkMetadata(
-            from_cid={"/": "cid123"},
-            to_file={"/": "./metadata.json"}
+            from_=IPLDReference(path="cid123"),
+            to=IPLDReference(path="./metadata.json")
         )
-        assert metadata.from_cid == {"/": "cid123"}
-        assert metadata.to_file == {"/": "./metadata.json"}
+        assert metadata.from_.path == "cid123"
+        assert metadata.to.path == "./metadata.json"
 
     def test_root_metadata_creation(self):
         """Test RootMetadata NamedTuple creation"""
@@ -293,14 +294,17 @@ class TestProcessingFunctions:
         with open(result.metadata_path) as f:
             metadata = json.load(f)
         assert metadata["name"] == "photo.jpg"
-        assert metadata["ipfs_url"] == "./cid123/photo.jpg"
+        assert metadata["ipfs_url"] == "./photo.jpg"  # Now relative to metadata file location
         assert metadata["file_format"] == "jpeg"
         
         # Check link content
         with open(result.link_path) as f:
             link = json.load(f)
-        assert link["from_cid"] == {"/": "cid123"}
-        assert link["to_file"]["/"].startswith("./")
+        assert link["from"] == {"/": "cid123"}  # Changed from from_cid to from
+        # The 'to' field should point to the metadata file (same prefix as link file)
+        assert link["to"]["/"].startswith("./")
+        assert link["to"]["/"].endswith(".json")
+        assert "-link" not in link["to"]["/"]  # Should point to metadata, not link file
 
     def test_process_cid_directory(self, tmp_path, mock_uuid):
         """Test processing a CID directory"""

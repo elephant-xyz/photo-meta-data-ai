@@ -170,3 +170,5 @@ env
 .DS_Store
 test-data/
 .DS_Store
+photo_data_group/
+test.sh
