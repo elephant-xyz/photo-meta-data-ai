@@ -151,6 +151,9 @@ def create_folders_and_cid_files(property_data, base_path="."):
     photo_data_group_dir = Path(base_path) / "photo_data_group"
     os.makedirs(photo_data_group_dir, exist_ok=True)
 
+    photo_data_group_dir = Path(base_path) / "photo_data_group"
+    os.makedirs(photo_data_group_dir, exist_ok=True)
+
     # Create the output folder for CID files
     output_folder_path = os.path.join(base_path, "output")
     os.makedirs(output_folder_path, exist_ok=True)
@@ -225,7 +228,6 @@ def main():
 
         logger.info(f"✓ Extracted {len(property_data)} properties:")
 
-        print(f"✓ Extracted {len(property_data)} properties:")
         for prop_id, prop_cid in property_data.items():
             logger.info(f"  - Property ID: {prop_id} -> CID: {prop_cid}")
 
