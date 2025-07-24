@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import tempfile
 import logging
 from dotenv import load_dotenv
+from PIL import Image as PILImage
 
 
 # Configure logging
@@ -101,7 +102,7 @@ def list_s3_images_in_folder(folder_name, property_id=None):
         images = []
         for obj in response.get("Contents", []):
             key = obj["Key"]
-            if key.lower().endswith((".jpg", ".jpeg", ".png")):
+            if key.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")):
                 images.append({"key": key, "name": os.path.basename(key), "folder": folder_name})
 
         return images
@@ -113,7 +114,9 @@ def list_s3_images_in_folder(folder_name, property_id=None):
 def download_s3_image_to_temp(s3_key):
     """Download an S3 image to a temporary file."""
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+        # Get file extension from S3 key
+        ext = os.path.splitext(s3_key)[1] or '.jpg'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_file:
             s3_client.download_file(S3_BUCKET_NAME, s3_key, tmp_file.name)
             return tmp_file.name
     except Exception as e:
@@ -134,9 +137,9 @@ def calculate_image_hash(image_path: str) -> str:
 def calculate_image_similarity(img1_path: str, img2_path: str) -> float:
     """Calculate similarity between two images using feature matching."""
     try:
-        # Load images
-        img1 = cv2.imread(img1_path)
-        img2 = cv2.imread(img2_path)
+        # Load images (with WebP support)
+        img1 = load_image_cv2(img1_path)
+        img2 = load_image_cv2(img2_path)
 
         if img1 is None or img2 is None:
             return 0.0
@@ -181,11 +184,32 @@ def calculate_image_similarity(img1_path: str, img2_path: str) -> float:
         return 0.0
 
 
-def assess_image_quality(image_path: str) -> dict:
-    """Assess image quality using multiple metrics."""
+def load_image_cv2(image_path):
+    """Load image with OpenCV, with WebP support via PIL fallback."""
     try:
-        # Load image
         img = cv2.imread(image_path)
+        
+        # If OpenCV fails and it might be WebP, try PIL
+        if img is None and image_path.lower().endswith('.webp'):
+            pil_img = PILImage.open(image_path)
+            # Convert PIL image to OpenCV format
+            if pil_img.mode == 'RGBA':
+                # Convert RGBA to RGB
+                rgb_img = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+                rgb_img.paste(pil_img, mask=pil_img.split()[3])
+                pil_img = rgb_img
+            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        
+        return img
+    except Exception as e:
+        logger.error(f"Error loading image {image_path}: {e}")
+        return None
+
+def assess_image_quality(image_path: str) -> dict:
+    """Assess image quality using multiple metrics (supports WebP)."""
+    try:
+        # Load image with WebP support
+        img = load_image_cv2(image_path)
         if img is None:
             return {"quality_score": 0, "quality_rating": "error", "error": "Could not load image"}
 
@@ -223,6 +247,9 @@ def assess_image_quality(image_path: str) -> dict:
             quality_score += 1
 
         # File size scoring (assuming good compression)
+        # Add format info
+        file_ext = os.path.splitext(image_path)[1].lower()
+        format_info = "webp" if file_ext == '.webp' else file_ext[1:] if file_ext else "unknown"
         if file_size_mb >= 1.0:
             quality_score += 2
         else:
@@ -269,6 +296,7 @@ def assess_image_quality(image_path: str) -> dict:
             "contrast": round(contrast, 1),
             "sharpness": round(sharpness, 2),
             "noise_level": noise_level,
+            "format": format_info,
         }
 
     except Exception as e:

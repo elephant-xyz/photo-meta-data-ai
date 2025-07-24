@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 import tempfile
 import logging
 from dotenv import load_dotenv
+from .image_converter import ImageConverter, convert_to_webp_base64
 
 
 # Configure logging
@@ -527,26 +528,44 @@ def get_openai_cost_for_today(api_key=None):
 
 
 def optimize_image(image_path):
-    """Optimize image by reducing resolution and file size."""
+    """Optimize image by converting to WebP and reducing resolution."""
     try:
+        # Initialize image converter
+        converter = ImageConverter(logger)
+        
         with Image.open(image_path) as img:
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-
-            img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
-
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-            buffer.seek(0)
-
-            b64_data = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-            # Verify base64 encoding is valid
-            if len(b64_data) > 0:
+            # Get original size for logging
+            original_size = os.path.getsize(image_path) / 1024  # KB
+            
+            # Resize if needed
+            if img.width > MAX_IMAGE_SIZE[0] or img.height > MAX_IMAGE_SIZE[1]:
+                img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+            
+            # Convert to WebP for better compression
+            try:
+                b64_data = converter.convert_to_webp_base64(img, quality=85)
+                
+                # Log compression results
+                webp_size = len(base64.b64decode(b64_data)) / 1024  # KB
+                compression_ratio = (1 - webp_size / original_size) * 100
+                logger.info(f"Optimized {os.path.basename(image_path)}: "
+                          f"{original_size:.1f}KB -> {webp_size:.1f}KB "
+                          f"({compression_ratio:.1f}% reduction)")
+                
                 return b64_data
-            else:
-                print(f"[ERROR] Empty base64 data for {image_path}")
-                return None
+                
+            except Exception as webp_error:
+                logger.warning(f"WebP conversion failed, falling back to JPEG: {webp_error}")
+                # Fallback to JPEG
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+                buffer.seek(0)
+                
+                return base64.b64encode(buffer.getvalue()).decode("utf-8")
+                
     except Exception as e:
         print(f"[ERROR] Failed to optimize image {image_path}: {e}")
         return encode_image_original(image_path)

@@ -165,3 +165,6 @@ output/52434205310037080/layout_dining_room_batch_01.json
 /images
 env
 *.csv
+
+.idea/
+.DS_Store
