@@ -1159,7 +1159,7 @@ def generate_image_json_files_s3(image_objects, output_dir, batch_number):
                                 image_data[prop_name] = None
         
         # Save individual image file
-        filename = f"{image_cid}.json"
+        filename = f"{image_cid}_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         
         with open(filepath, "w") as f:
@@ -1234,7 +1234,7 @@ def generate_image_json_files(image_paths, output_dir, batch_number):
                                 image_data[prop_name] = None
         
         # Save individual image file
-        filename = f"{image_cid}.json"
+        filename = f"{image_cid}_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         
         with open(filepath, "w") as f:
@@ -1267,7 +1267,7 @@ def generate_individual_object_files_s3(batch_data, image_objects, output_dir, b
     property_objects = ["structure", "lot", "utility", "nearby_location"]
     for obj_type in property_objects:
         if batch_data.get(obj_type):
-            filename = f"{obj_type}_batch_{batch_number:02d}.json"
+            filename = f"{obj_type}_batch_{batch_number:02d}_photo_metadata.json"
             filepath = os.path.join(output_dir, filename)
 
             with open(filepath, "w") as f:
@@ -1379,7 +1379,7 @@ def generate_individual_object_files(batch_data, image_paths, output_dir, batch_
     property_objects = ["structure", "lot", "utility", "nearby_location"]
     for obj_type in property_objects:
         if batch_data.get(obj_type):
-            filename = f"{obj_type}_batch_{batch_number:02d}.json"
+            filename = f"{obj_type}_batch_{batch_number:02d}_photo_metadata.json"
             filepath = os.path.join(output_dir, filename)
 
             with open(filepath, "w") as f:
@@ -1603,7 +1603,7 @@ def merge_and_update_object_files_s3(batch_data, image_objects, output_dir, batc
     property_objects = ["structure", "lot", "utility"]
     for obj_type in property_objects:
         if batch_data.get(obj_type):
-            filename = f"{obj_type}.json"
+            filename = f"{obj_type}_photo_metadata.json"
             filepath = os.path.join(output_dir, filename)
             
             # Load existing data if file exists
@@ -1680,9 +1680,9 @@ def merge_and_update_object_files_s3(batch_data, image_objects, output_dir, batc
             
             # Create filename with descriptive identifier
             if unique_id and unique_id != space_type:
-                filename = f"layout_{space_type}_{unique_id}.json"
+                filename = f"layout_{space_type}_{unique_id}_photo_metadata.json"
             else:
-                filename = f"layout_{space_type}.json"
+                filename = f"layout_{space_type}_photo_metadata.json"
             
             filepath = os.path.join(output_dir, filename)
             
@@ -1730,7 +1730,7 @@ def merge_and_update_object_files_s3(batch_data, image_objects, output_dir, batc
                 appliance_type = str(appliance_type)
 
             appliance_type = appliance_type.lower().replace(" ", "_")
-            filename = f"appliance_{appliance_type}.json"
+            filename = f"appliance_{appliance_type}_photo_metadata.json"
             filepath = os.path.join(output_dir, filename)
             
             # Load existing appliance data if file exists
@@ -2214,7 +2214,7 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
     # Save grouped layout files
     for space_type, layouts in layout_groups.items():
         if layouts:
-            filename = f"layout_{space_type.lower().replace(' ', '_')}.json"
+            filename = f"layout_{space_type.lower().replace(' ', '_')}_photo_metadata.json"
             filepath = os.path.join(output_dir, filename)
             with open(filepath, "w") as f:
                 json.dump(layouts, f, indent=2)
@@ -2223,7 +2223,7 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
 
     # Group lots together
     if "lots" in result and result["lots"]:
-        filename = "lot.json"
+        filename = "lot_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         with open(filepath, "w") as f:
             json.dump(result["lots"], f, indent=2)
@@ -2232,7 +2232,7 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
 
     # Group structures together
     if "structures" in result and result["structures"]:
-        filename = "structure.json"
+        filename = "structure_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         with open(filepath, "w") as f:
             json.dump(result["structures"], f, indent=2)
@@ -2241,7 +2241,7 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
 
     # Group utilities together
     if "utilities" in result and result["utilities"]:
-        filename = "utility.json"
+        filename = "utility_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         
         # Ensure utility is saved as an object, not an array
@@ -2259,7 +2259,7 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
 
     # Group appliances together
     if "appliances" in result and result["appliances"]:
-        filename = "appliance.json"
+        filename = "appliance_photo_metadata.json"
         filepath = os.path.join(output_dir, filename)
         with open(filepath, "w") as f:
             json.dump(result["appliances"], f, indent=2)
@@ -2274,14 +2274,14 @@ def generate_grouped_object_files_s3(result, image_objects, output_dir, property
                 original_filename = image_objects[i]["Key"].split("/")[-1]
                 # Remove extension and create clean filename
                 base_name = os.path.splitext(original_filename)[0]
-                filename = f"{base_name}.json"
+                filename = f"{base_name}_photo_metadata.json"
             else:
-                filename = f"image_{i:03d}.json"
+                filename = f"image_{i:03d}_photo_metadata.json"
 
             filepath = os.path.join(output_dir, filename)
             with open(filepath, "w") as f:
                 json.dump(image_data, f, indent=2)
-            grouped_files["images"][filename.replace(".json", "")] = filename
+            grouped_files["images"][filename.replace("_photo_metadata.json", "")] = filename
 
         print(f"    [✔] Saved: {len(grouped_files['images'])} image files")
 
@@ -3108,9 +3108,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_file_{filename}"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Correct relationship structure with property.json reference
+        # Relationship structure without property.json reference
         relationship_data = {
-            "from": {"/": "./property.json"},
+            "from": {"/": f"./{filename}"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3127,9 +3127,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_{obj_type}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Correct relationship structure with property.json reference
+        # Relationship structure without property.json reference
         relationship_data = {
-            "from": {"/": "./property.json"},
+            "from": {"/": f"./{filename}"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3146,9 +3146,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_layout_{layout_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Correct relationship structure with property.json reference
+        # Relationship structure without property.json reference
         relationship_data = {
-            "from": {"/": "./property.json"},
+            "from": {"/": f"./{filename}"},
             "to": {"/": f"./{filename}"}
         }
         
@@ -3165,9 +3165,9 @@ def generate_individual_relationship_files_s3(object_files, image_objects, prope
         rel_filename = f"relationship_property_appliance_{appliance_key}.json"
         rel_path = os.path.join(output_dir, rel_filename)
         
-        # Correct relationship structure with property.json reference
+        # Relationship structure without property.json reference
         relationship_data = {
-            "from": {"/": "./property.json"},
+            "from": {"/": f"./{filename}"},
             "to": {"/": f"./{filename}"}
         }
         

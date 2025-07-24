@@ -1007,6 +1007,75 @@ Please provide the corrected JSON:
     
     return fixed_count
 
+def copy_property_files_from_zip():
+    """Unzip submit.zip, find property.json files, and copy to submit-photo property folders."""
+    import zipfile
+    import shutil
+    
+    if not os.path.exists("submit.zip"):
+        print("⚠️  submit.zip not found - skipping property.json copy")
+        return
+    
+    print("📦 Unzipping submit.zip...")
+    
+    try:
+        # Create temporary extraction directory
+        extract_dir = "submit-extracted"
+        if os.path.exists(extract_dir):
+            shutil.rmtree(extract_dir)
+        
+        # Extract the zip file
+        with zipfile.ZipFile("submit.zip", "r") as zip_ref:
+            zip_ref.extractall(extract_dir)
+        
+        print("✅ Successfully unzipped submit.zip")
+        
+        # Find all property.json files in the extracted content
+        property_files = []
+        for root, dirs, files in os.walk(extract_dir):
+            for file in files:
+                if file == "property.json":
+                    property_files.append(os.path.join(root, file))
+        
+        print(f"📁 Found {len(property_files)} property.json files in submit.zip")
+        
+        # Copy property.json files to corresponding submit-photo folders
+        copied_count = 0
+        for property_file in property_files:
+            # Extract the property CID from the path
+            # Path format: submit-extracted/submit/bafkreixxx/property.json
+            path_parts = property_file.split(os.sep)
+            if len(path_parts) >= 4:
+                property_cid = path_parts[2]  # The CID folder name from the zip (after 'submit')
+                
+                # Target path in submit-photo
+                target_dir = os.path.join("submit-photo", property_cid)
+                target_file = os.path.join(target_dir, "property.json")
+                
+                # Create target directory if it doesn't exist
+                os.makedirs(target_dir, exist_ok=True)
+                
+                # Copy the property.json file
+                try:
+                    shutil.copy2(property_file, target_file)
+                    print(f"✅ Copied: {property_cid}/property.json")
+                    copied_count += 1
+                except Exception as e:
+                    print(f"❌ Error copying {property_cid}/property.json: {e}")
+        
+        print(f"✅ Successfully copied {copied_count} property.json files to submit-photo folders")
+        
+        # Clean up extracted files
+        shutil.rmtree(extract_dir)
+        print("🧹 Cleaned up extracted files")
+        
+    except Exception as e:
+        print(f"❌ Error processing submit.zip: {e}")
+        # Clean up on error
+        if os.path.exists("submit-extracted"):
+            shutil.rmtree("submit-extracted")
+
+
 def main():
     """Main function to orchestrate the entire process."""
     print("🚀 Starting fix and submit process for local folders...")
@@ -1050,8 +1119,12 @@ def main():
         print("❌ Failed to rename folders")
         return
     
-    # Step 6: Run CLI validation iteratively until no submit errors
-    print("\n🔍 Step 6: Running CLI validation iteratively until no submit errors...")
+    # Step 6: Copy property.json files from submit.zip after folder renaming
+    print("\n📋 Step 6: Copying property.json files from submit.zip...")
+    copy_property_files_from_zip()
+    
+    # Step 7: Run CLI validation iteratively until no submit errors
+    print("\n🔍 Step 7: Running CLI validation iteratively until no submit errors...")
     max_attempts = 50  # Increased max attempts
     attempt = 0
     no_errors_found = False
@@ -1071,17 +1144,8 @@ def main():
             has_504_errors = any("504" in error.get('error', '').lower() for error in submit_errors)
             
             if has_504_errors:
-                print("🔧 Found 504 errors in submit_errors.csv - applying fixes before retry...")
-                
-                # Apply auto-fixes
-                fixed_count = attempt_auto_fixes(submit_dir, submit_errors)
-                if fixed_count == 0:
-                    print("🤖 No auto-fixes applied. Trying OpenAI to fix 504 errors...")
-                    openai_fixed_count = fix_errors_with_openai(submit_dir, submit_errors)
-                    if openai_fixed_count > 0:
-                        print(f"🤖 OpenAI applied {openai_fixed_count} fixes for 504 errors")
-                else:
-                    print(f"🔧 Applied {fixed_count} auto-fixes for 504 errors")
+                print("⏰ Found 504 errors (IPFS gateway timeouts) - retrying CLI immediately without fixes...")
+                print("🔄 504 errors are network issues, not data issues - no fixes needed")
             else:
                 print("⏰ No 504 errors found in submit_errors.csv - retrying without fixes...")
             
