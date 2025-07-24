@@ -127,11 +127,11 @@ class TestUtilityFunctions:
         """Test link metadata creation"""
         metadata = create_link_metadata("cid123", "metadata.json")
         
-        assert metadata.from_cid.path == "cid123"
-        assert metadata.to_file.path == "./metadata.json"
+        assert metadata.from_.path == "cid123"
+        assert metadata.to.path == "./metadata.json"
         # Test that it serializes correctly
-        assert metadata.from_cid.to_dict() == {"/": "cid123"}
-        assert metadata.to_file.to_dict() == {"/": "./metadata.json"}
+        assert metadata.from_.to_dict() == {"/": "cid123"}
+        assert metadata.to.to_dict() == {"/": "./metadata.json"}
 
     def test_create_link_reference(self):
         """Test link reference creation"""

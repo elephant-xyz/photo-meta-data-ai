@@ -5,11 +5,11 @@ Traverses photo_data_group directory and generates JSON metadata files for image
 """
 
 import uuid
-from itertools import chain
-from pathlib import Path
-from typing import Any, Iterator, NamedTuple, Callable
 from functools import partial
+from itertools import chain
 from operator import methodcaller
+from pathlib import Path
+from typing import Any, Callable, Iterator, NamedTuple
 
 import orjson
 
@@ -39,8 +39,8 @@ class IPLDReference(NamedTuple):
 class LinkMetadata(NamedTuple):
     """Link between CID and photo metadata file"""
 
-    from_cid: IPLDReference
-    to_file: IPLDReference
+    from_: IPLDReference  # Using from_ because 'from' is a Python keyword
+    to: IPLDReference
 
 
 class RootMetadata(NamedTuple):
@@ -102,7 +102,7 @@ def create_photo_metadata(file_path: Path, relative_path: str) -> PhotoMetadata:
 
 def create_link_metadata(cid: str, metadata_file_path: str) -> LinkMetadata:
     """Create LinkMetadata between CID and metadata file"""
-    return LinkMetadata(from_cid=IPLDReference(path=cid), to_file=IPLDReference(path=f"./{metadata_file_path}"))
+    return LinkMetadata(from_=IPLDReference(path=cid), to=IPLDReference(path=f"./{metadata_file_path}"))
 
 
 def default_serializer(obj: Any) -> Any:
@@ -110,6 +110,11 @@ def default_serializer(obj: Any) -> Any:
     if isinstance(obj, IPLDReference):
         # Handle IPLDReference specifically to return dict format
         return obj.to_dict()
+    elif isinstance(obj, LinkMetadata):
+        # Handle LinkMetadata specifically to rename from_ to from
+        data = obj._asdict()
+        data["from"] = data.pop("from_")
+        return data
     elif hasattr(obj, "_asdict"):
         # Handle NamedTuple
         return obj._asdict()
