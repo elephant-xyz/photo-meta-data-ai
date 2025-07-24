@@ -14,7 +14,22 @@ AWS Rekognition photo categorization tool for real estate images. Automatically 
 
 ## Quick Start
 
-### Install from GitHub (Recommended)
+### Remote Installation (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/photo-meta-data-ai.git
+cd photo-meta-data-ai
+
+# Quick install with automatic script
+./install.sh
+
+# Or install manually
+pip install -r requirements.txt
+pip install -e .
+```
+
+### Install from GitHub
 
 ```bash
 # Install directly from GitHub repository
@@ -57,6 +72,31 @@ pip install -e .
 photo-categorizer
 ```
 
+## Available Commands
+
+After installation, you can run any of these commands from anywhere:
+
+### Core AI Analysis
+- `ai-analyzer` - Main AI image analysis with county data integration
+- `ai-analyzer-quality` - AI analysis with quality and duplicate detection
+- `photo-categorizer` - AWS Rekognition photo categorization
+
+### Data Processing
+- `fix-schema-validation` - Fix schema validation issues in AI output
+- `property-summarizer` - Summarize property data
+
+### File Management
+- `copy-property-files-from-zip` - Copy property files from zip
+- `copy-all-files-from-zip` - Copy all files from zip
+- `unzip-count-data` - Unzip and rename county data
+- `copy-all-data-for-submission` - Copy all data for submission
+
+### Setup and Utilities
+- `bucket-manager` - S3 bucket management
+- `colab-folder-setup` - Colab folder setup
+- `quality-assessment` - Image quality assessment
+- `upload-to-s3` - Upload files to S3
+
 ## Usage
 
 ### Set AWS Credentials
@@ -77,6 +117,12 @@ export S3_BUCKET_NAME='your-bucket-name'
 - ✅ Better error handling to continue processing even if batches fail
 - ✅ Improved retry logic with exponential backoff
 - ✅ All logs now go to files only (no console output)
+
+**Logging and Output:**
+- ✅ All scripts use proper logging instead of print statements
+- ✅ Logs are written to `logs/` directory with separate files per script
+- ✅ No console output - all information goes to log files
+- ✅ Proper log levels (INFO, WARNING, ERROR, DEBUG) for better debugging
 
 ### Prepare Your Data
 

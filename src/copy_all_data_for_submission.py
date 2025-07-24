@@ -21,8 +21,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/copy-property.log'),
-        logging.StreamHandler()
+        logging.FileHandler('logs/copy-all-data.log')
+        # Removed StreamHandler to only log to files
     ]
 )
 logger = logging.getLogger(__name__)
@@ -188,12 +188,22 @@ def copy_property_files_from_zip():
         copied_count = 0
         for property_file in property_files:
             # Extract the property CID from the path
-            # Path format: submit-extracted/submit/bafkreixxx/property.json
+            # Handle both possible path formats:
+            # 1. submit-extracted/submit/bafkreixxx/property.json
+            # 2. submit-extracted/bafkreixxx/property.json
             path_parts = property_file.split(os.sep)
-            if len(path_parts) >= 4:
-                property_cid = path_parts[2]  # The CID folder name from the zip (after 'submit')
-                
-                # Target path in submit-photo
+            
+            # Find the property CID (should be a folder name that looks like a CID)
+            property_cid = None
+            
+            # Look for a CID-like folder name (starts with 'bafkrei' and is in the right position)
+            for i, part in enumerate(path_parts):
+                if part.startswith('bafkrei') and i < len(path_parts) - 1:
+                    property_cid = part
+                    break
+            
+            if property_cid:
+                # Target path in submit-photo (directly under submit-photo, no submit subfolder)
                 target_dir = os.path.join("submit-photo", property_cid)
                 target_file = os.path.join(target_dir, "property.json")
                 
@@ -207,6 +217,8 @@ def copy_property_files_from_zip():
                     copied_count += 1
                 except Exception as e:
                     logger.error(f"❌ Error copying {property_cid}/property.json: {e}")
+            else:
+                logger.warning(f"⚠️  Could not extract property CID from path: {property_file}")
         
         logger.info(f"✅ Successfully copied {copied_count} property.json files to submit-photo folders")
         

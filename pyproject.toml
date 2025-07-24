@@ -39,12 +39,17 @@ dependencies = [
 [project.scripts]
 photo-categorizer = "src.rekognition:main"
 ai-analyzer = "src.ai_image_analysis_optimized_multi_thread:main"
+ai-analyzer-quality = "src.ai_image_analysis_with_quality_duplicate_detection:main"
 bucket-manager = "src.bucket_manager:main"
 colab-folder-setup = "src.colab_folder_setup:main"
 quality-assessment = "src.quality_assessment:main"
 upload-to-s3 = "src.uploadtoS3:main"
 property-summarizer = "src.property_summarizer:main"
-ai-analyzer-fast = "src.ai_image_analysis_colab_fast:main"
+fix-schema-validation = "src.fix_schema_validation:main"
+copy-property-files-from-zip = "src.copy_property_files_from_zip:main"
+copy-all-files-from-zip = "src.copy_all_files_from_zip:main"
+unzip-count-data = "src.unzip_count_data:main"
+copy-all-data-for-submission = "src.copy_all_data_for_submission:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/photo-meta-data-ai"

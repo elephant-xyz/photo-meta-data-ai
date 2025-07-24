@@ -22,8 +22,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/schema-fixer.log'),
-        logging.StreamHandler()
+        logging.FileHandler('logs/fix-schema-validation.log')
+        # Removed StreamHandler to only log to files
     ]
 )
 logger = logging.getLogger(__name__)

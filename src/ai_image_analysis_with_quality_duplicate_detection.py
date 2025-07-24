@@ -23,13 +23,13 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Setup logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/ai-analyzer.log'),
-        logging.StreamHandler()
+        logging.FileHandler('logs/ai-analyzer-quality.log')
+        # Removed StreamHandler to only log to files
     ]
 )
 logger = logging.getLogger(__name__)
@@ -302,15 +302,15 @@ def analyze_images_with_quality(image_paths: List[str], output_dir: str,
             duplicate_count += 1
     
     # Print quality summary
-    print(f"\n{'='*60}")
-    print(f"IMAGE QUALITY SUMMARY")
-    print(f"{'='*60}")
-    print(f"Total Images: {total_images}")
-    print(f"Duplicates: {duplicate_count}")
-    print(f"\nQuality Distribution:")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"IMAGE QUALITY SUMMARY")
+    logger.info(f"{'='*60}")
+    logger.info(f"Total Images: {total_images}")
+    logger.info(f"Duplicates: {duplicate_count}")
+    logger.info(f"\nQuality Distribution:")
     for rating, count in sorted(quality_ratings.items()):
         percentage = (count / total_images) * 100
-        print(f"  {rating}: {count} ({percentage:.1f}%)")
+        logger.info(f"  {rating}: {count} ({percentage:.1f}%)")
     
     # Filter out duplicates for AI analysis (optional)
     non_duplicate_images = []
@@ -319,7 +319,7 @@ def analyze_images_with_quality(image_paths: List[str], output_dir: str,
         if not quality_mapping["images"][img_name]["is_duplicate"]:
             non_duplicate_images.append(img_path)
     
-    print(f"\nNon-duplicate images for AI analysis: {len(non_duplicate_images)}")
+    logger.info(f"\nNon-duplicate images for AI analysis: {len(non_duplicate_images)}")
     
     # Here you would integrate with your existing AI analysis
     # For now, we'll just return the quality mapping
@@ -355,10 +355,10 @@ def main():
     image_paths = [str(p) for p in image_paths]
     
     if not image_paths:
-        print(f"❌ No images found in {args.input_dir}")
+        logger.error(f"❌ No images found in {args.input_dir}")
         return
     
-    print(f"📊 Found {len(image_paths)} images to analyze")
+    logger.info(f"📊 Found {len(image_paths)} images to analyze")
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
@@ -370,8 +370,8 @@ def main():
         similarity_threshold=args.similarity_threshold
     )
     
-    print(f"\n✅ Analysis complete!")
-    print(f"Quality mapping saved to: {os.path.join(args.output_dir, QUALITY_MAPPING_FILE)}")
+    logger.info(f"\n✅ Analysis complete!")
+    logger.info(f"Quality mapping saved to: {os.path.join(args.output_dir, QUALITY_MAPPING_FILE)}")
 
 
 if __name__ == "__main__":

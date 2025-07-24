@@ -6,9 +6,28 @@ Self-contained script to summarize AI analysis data including layouts, structure
 
 import os
 import json
+import logging
 import argparse
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+
+def setup_logging():
+    """Setup logging configuration"""
+    # Create logs directory if it doesn't exist
+    os.makedirs('logs', exist_ok=True)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('logs/property-summarizer.log')
+            # Removed StreamHandler to only log to files
+        ]
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging()
 
 
 def load_json_file(filepath: str) -> Optional[Dict]:
@@ -17,7 +36,7 @@ def load_json_file(filepath: str) -> Optional[Dict]:
         with open(filepath, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"    [!] Error loading {filepath}: {e}")
+        logger.error(f"    [!] Error loading {filepath}: {e}")
         return None
 
 
@@ -297,10 +316,10 @@ def summarize_property(property_id: str, output_dir: str = "output"):
     property_dir = os.path.join(output_dir, property_id)
     
     if not os.path.exists(property_dir):
-        print(f"❌ Property directory not found: {property_dir}")
+        logger.error(f"❌ Property directory not found: {property_dir}")
         return None
     
-    print(f"📊 Analyzing property data from: {property_dir}")
+    logger.info(f"📊 Analyzing property data from: {property_dir}")
     
     # Generate summaries
     summary = {
@@ -337,18 +356,18 @@ def summarize_all_properties(output_dir: str = "output"):
     properties = get_available_properties(output_dir)
     
     if not properties:
-        print(f"❌ No property directories found in {output_dir}")
+        logger.error(f"❌ No property directories found in {output_dir}")
         return []
     
-    print(f"🚀 Starting summary for {len(properties)} properties: {', '.join(properties)}")
-    print(f"{'='*80}")
+    logger.info(f"🚀 Starting summary for {len(properties)} properties: {', '.join(properties)}")
+    logger.info(f"{'='*80}")
     
     all_summaries = []
     
     for i, property_id in enumerate(properties, 1):
-        print(f"\n{'='*60}")
-        print(f"PROCESSING PROPERTY {i}/{len(properties)}: {property_id}")
-        print(f"{'='*60}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"PROCESSING PROPERTY {i}/{len(properties)}: {property_id}")
+        logger.info(f"{'='*60}")
         
         summary = summarize_property(property_id, output_dir)
         if summary:
@@ -356,7 +375,7 @@ def summarize_all_properties(output_dir: str = "output"):
         
         # Add separator between properties
         if i < len(properties):
-            print(f"\n{'='*80}")
+            logger.info(f"\n{'='*80}")
     
     # Print overall summary
     print(f"\n{'='*80}")
@@ -405,14 +424,14 @@ def main():
     elif args.property_id:
         summarize_property(args.property_id, args.output_dir)
     else:
-        print("❌ Please specify either --property-id or --all-properties")
-        print("Available properties:")
+        logger.error("❌ Please specify either --property-id or --all-properties")
+        logger.info("Available properties:")
         properties = get_available_properties(args.output_dir)
         if properties:
             for prop in properties:
-                print(f"  • {prop}")
+                logger.info(f"  • {prop}")
         else:
-            print("  No properties found")
+            logger.info("  No properties found")
 
 
 if __name__ == "__main__":
