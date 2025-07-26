@@ -1549,7 +1549,10 @@ def generate_individual_object_files(batch_data, image_paths, output_dir, batch_
                 # Convert to string if it's not a string
                 space_type = str(space_type)
 
-            space_type = space_type.lower().replace(" ", "_")
+            space_type = space_type.lower().replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_").replace("-", "_")
+            # Clean up multiple consecutive underscores
+            while "__" in space_type:
+                space_type = space_type.replace("__", "_")
 
             # Handle multiple instances of same space_type
             if space_type in layout_counter:
@@ -1588,7 +1591,10 @@ def generate_individual_object_files(batch_data, image_paths, output_dir, batch_
                 # Convert to string if it's not a string
                 appliance_type = str(appliance_type)
 
-            appliance_type = appliance_type.lower().replace(" ", "_")
+            appliance_type = appliance_type.lower().replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_").replace("-", "_")
+            # Clean up multiple consecutive underscores
+            while "__" in appliance_type:
+                appliance_type = appliance_type.replace("__", "_")
 
             # Handle multiple instances of same appliance_type
             if appliance_type in appliance_counter:
@@ -2800,11 +2806,9 @@ def process_local_categories_parallel(property_id, categories, prompt, schemas=N
             end_time = time.time()
             duration = end_time - start_time
 
-            if result and result.get('success'):
-                cost = result.get('cost', 0)
-                total_cost += cost
-                logger.info(f"✅ Completed category {category} (Cost: ${cost:.4f}, Duration: {duration:.1f}s)")
-                return {'category': category, 'success': True, 'cost': cost, 'duration': duration}
+            if result:
+                logger.info(f"✅ Completed category {category} (Duration: {duration:.1f}s)")
+                return {'category': category, 'success': True, 'duration': duration}
             else:
                 logger.error(f"❌ Failed to process category {category}")
                 return {'category': category, 'success': False, 'error': 'Processing failed'}
@@ -3671,9 +3675,9 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
 
             for future in as_completed(futures):
                 try:
-                    result = future.result(timeout=600)  # 10 minute timeout per batch for Colab
-                    if result:
-                        batch_results.append(result)
+                    batch_result = future.result(timeout=600)  # 10 minute timeout per batch for Colab
+                    if batch_result and batch_result[0]:  # batch_result is (result, cost) tuple
+                        batch_results.append(batch_result[0])  # Only append the result part
                     completed += 1
                     logger.info(f"✅ Completed batch {completed}/{len(batches)}")
                 except Exception as e:
