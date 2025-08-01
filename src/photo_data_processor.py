@@ -111,6 +111,15 @@ def create_link_metadata(cid: str, metadata_file_path: str) -> LinkMetadata:
     )
 
 
+def create_link_metadata_from_parcel_id(parcel_id: str, metadata_file_path: str) -> LinkMetadata:
+    """Create LinkMetadata between parcel ID and photo metadata file"""
+    # For parcel IDs, we'll use a simple path structure
+    return LinkMetadata(
+        from_=IPLDReference(path=f"./property_{parcel_id}.json"), 
+        to=IPLDReference(path=f"./{metadata_file_path}")
+    )
+
+
 def default_serializer(obj: Any) -> Any:
     """Custom serializer for orjson to handle NamedTuples and other types"""
     if isinstance(obj, IPLDReference):
@@ -167,7 +176,7 @@ def get_image_files(directory: Path) -> Iterator[Path]:
 def process_single_directory(directory: Path) -> int:
     """Process a single directory and create its own root.json
     Returns the number of images processed"""
-    cid = directory.name
+    parcel_id = directory.name
 
     # Get all image files in this directory
     image_files = list(get_image_files(directory))
@@ -190,8 +199,8 @@ def process_single_directory(directory: Path) -> int:
         # Create metadata - ipfs_url points to image in same directory
         photo_metadata = create_photo_metadata(photo_path, photo_path.name)
 
-        # Create link metadata - 'to' points to metadata file in same directory
-        link_metadata = create_link_metadata(cid, metadata_filename)
+        # Create link metadata - use parcel_id instead of CID
+        link_metadata = create_link_metadata_from_parcel_id(parcel_id, metadata_filename)
 
         # Write files
         write_json_file(metadata_path, photo_metadata)
@@ -231,25 +240,25 @@ def process_photo_data_group(input_dir: Path) -> None:
     if not input_dir.exists():
         raise ValueError(f"Input directory '{input_dir}' does not exist.")
 
-    # Get all CID directories using filter
-    cid_dirs = get_cid_directories(input_dir)
+    # Get all parcel ID directories using filter
+    parcel_dirs = get_cid_directories(input_dir)
 
-    if not cid_dirs:
-        print(f"No CID directories found in {input_dir}")
+    if not parcel_dirs:
+        print(f"No parcel ID directories found in {input_dir}")
         return
 
     # Process each directory independently
     total_images = 0
     processed_dirs = 0
 
-    for cid_dir in cid_dirs:
-        image_count = process_single_directory(cid_dir)
+    for parcel_dir in parcel_dirs:
+        image_count = process_single_directory(parcel_dir)
         if image_count > 0:
             processed_dirs += 1
             total_images += image_count
-            print(f"  - Processed {cid_dir.name}: {image_count} images, root.json created")
+            print(f"  - Processed {parcel_dir.name}: {image_count} images, root.json created")
         else:
-            print(f"  - Skipped {cid_dir.name}: no images found")
+            print(f"  - Skipped {parcel_dir.name}: no images found")
 
     # Print summary
     print("\nProcessing complete:")
@@ -267,8 +276,8 @@ def main() -> None:
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=Path("photo_data_group"),
-        help="Input directory containing CID subdirectories (default: photo_data_group)",
+        default=Path("output"),
+        help="Input directory containing parcel ID subdirectories (default: output)",
     )
 
     args = parser.parse_args()
