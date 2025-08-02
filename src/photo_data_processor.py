@@ -111,11 +111,14 @@ def create_link_metadata(cid: str, metadata_file_path: str) -> LinkMetadata:
     )
 
 
-def create_link_metadata_from_parcel_id(parcel_id: str, metadata_file_path: str) -> LinkMetadata:
+def create_link_metadata_from_parcel_id(parcel_id: str, metadata_file_path: str, property_filename: str = None) -> LinkMetadata:
     """Create LinkMetadata between parcel ID and photo metadata file"""
-    # For parcel IDs, we'll use a simple path structure
+    # Use provided property filename or default to property_{parcel_id}.json
+    if property_filename is None:
+        property_filename = f"property_{parcel_id}.json"
+    
     return LinkMetadata(
-        from_=IPLDReference(path=f"./property_{parcel_id}.json"), 
+        from_=IPLDReference(path=f"./{property_filename}"), 
         to=IPLDReference(path=f"./{metadata_file_path}")
     )
 
@@ -173,7 +176,7 @@ def get_image_files(directory: Path) -> Iterator[Path]:
 # Removed extract_link_path - no longer needed
 
 
-def process_single_directory(directory: Path) -> int:
+def process_single_directory(directory: Path, property_filename: str = None) -> int:
     """Process a single directory and create its own root.json
     Returns the number of images processed"""
     parcel_id = directory.name
@@ -200,7 +203,7 @@ def process_single_directory(directory: Path) -> int:
         photo_metadata = create_photo_metadata(photo_path, photo_path.name)
 
         # Create link metadata - use parcel_id instead of CID
-        link_metadata = create_link_metadata_from_parcel_id(parcel_id, metadata_filename)
+        link_metadata = create_link_metadata_from_parcel_id(parcel_id, metadata_filename, property_filename)
 
         # Write files
         write_json_file(metadata_path, photo_metadata)
@@ -235,7 +238,7 @@ def get_cid_directories(input_dir: Path) -> list[Path]:
 # Removed extract_link_files and has_link_files - no longer needed
 
 
-def process_photo_data_group(input_dir: Path) -> None:
+def process_photo_data_group(input_dir: Path, property_filename: str = None) -> None:
     """Main processing function - processes each directory independently"""
     if not input_dir.exists():
         raise ValueError(f"Input directory '{input_dir}' does not exist.")
@@ -252,7 +255,7 @@ def process_photo_data_group(input_dir: Path) -> None:
     processed_dirs = 0
 
     for parcel_dir in parcel_dirs:
-        image_count = process_single_directory(parcel_dir)
+        image_count = process_single_directory(parcel_dir, property_filename)
         if image_count > 0:
             processed_dirs += 1
             total_images += image_count
@@ -279,11 +282,17 @@ def main() -> None:
         default=Path("output"),
         help="Input directory containing parcel ID subdirectories (default: output)",
     )
+    parser.add_argument(
+        "--property-filename",
+        type=str,
+        default=None,
+        help="Custom property filename (default: property_{parcel_id}.json)",
+    )
 
     args = parser.parse_args()
 
     try:
-        process_photo_data_group(args.input_dir)
+        process_photo_data_group(args.input_dir, args.property_filename)
     except ValueError as e:
         print(f"Error: {e}")
         exit(1)
