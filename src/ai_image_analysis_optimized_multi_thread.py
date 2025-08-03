@@ -2722,11 +2722,18 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
 
         # Get all category folders for this property
         categories = []
+        logger.info(f"🔍 Checking property path: {property_path}")
+        logger.info(f"🔍 Contents of property path: {os.listdir(property_path)}")
+        
         for item in os.listdir(property_path):
             item_path = os.path.join(property_path, item)
+            logger.info(f"🔍 Checking item: {item} -> {item_path} -> isdir: {os.path.isdir(item_path)}")
             if os.path.isdir(item_path):
                 categories.append(item)
+                logger.info(f"✅ Added category: {item}")
 
+        logger.info(f"🔍 Final categories list: {categories}")
+        
         if not categories:
             logger.warning(f"⚠️  No category folders found for property {property_id}, skipping...")
             total_failed += 1
