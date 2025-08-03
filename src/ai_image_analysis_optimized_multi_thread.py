@@ -130,15 +130,19 @@ TOTAL_COST = 0.0
 s3_client = None
 
 
-def load_county_layout_data(property_id):
+def load_county_layout_data(property_id, county_data_dir=None):
     """Load layout data from county-data directory for a specific property."""
     county_layouts = []
+    
+    # Use provided county data directory or default
+    if county_data_dir is None:
+        county_data_dir = COUNTY_DATA_DIR
 
-    if not os.path.exists(COUNTY_DATA_DIR):
-        logger.warning(f"⚠️  County data directory not found: {COUNTY_DATA_DIR}")
+    if not os.path.exists(county_data_dir):
+        logger.warning(f"⚠️  County data directory not found: {county_data_dir}")
         return county_layouts
 
-    property_dir = os.path.join(COUNTY_DATA_DIR, str(property_id))
+    property_dir = os.path.join(county_data_dir, str(property_id))
     if not os.path.exists(property_dir):
         logger.warning(f"⚠️  Property directory not found: {property_dir}")
         return county_layouts
@@ -2697,7 +2701,7 @@ def print_final_statistics():
     logger.info("=" * 60)
 
 
-def process_all_local_properties_from_folders(property_folders, prompt, schemas=None, batch_size=10, max_workers=12, parallel_categories=False, category_workers=12):
+def process_all_local_properties_from_folders(property_folders, prompt, schemas=None, batch_size=10, max_workers=12, parallel_categories=False, category_workers=12, county_data_dir=None):
     """Process all local properties from discovered folders"""
     logger.info(f"🖥️  Processing {len(property_folders)} local properties...")
 
@@ -2735,7 +2739,7 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
             logger.info(f"🚀 Processing categories in parallel for {property_id}")
             result = process_local_categories_parallel(
                 property_id, categories, prompt, schemas,
-                batch_size, max_workers, category_workers
+                batch_size, max_workers, category_workers, county_data_dir
             )
             property_success = result['success']
             if property_success:
@@ -2753,7 +2757,7 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
 
                 try:
                     # Process the category folder
-                    success = process_local_category_folder(property_id, category, prompt, schemas, batch_size, max_workers)
+                    success = process_local_category_folder(property_id, category, prompt, schemas, batch_size, max_workers, county_data_dir)
                     if success:
                         property_success = True
                         logger.info(f"✅ Successfully processed category {category}")
@@ -2782,7 +2786,7 @@ def process_all_local_properties_from_folders(property_folders, prompt, schemas=
     return total_successful > 0
 
 
-def process_local_categories_parallel(property_id, categories, prompt, schemas=None, batch_size=10, max_workers=12, category_workers=12):
+def process_local_categories_parallel(property_id, categories, prompt, schemas=None, batch_size=10, max_workers=12, category_workers=12, county_data_dir=None):
     """Process local categories in parallel."""
     logger.info(f"🚀 Using parallel category processing with {category_workers} workers")
     logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
@@ -2800,7 +2804,7 @@ def process_local_categories_parallel(property_id, categories, prompt, schemas=N
             # Process the category
             result = process_local_category_folder(
                 property_id, category, prompt, schemas,
-                batch_size, max_workers
+                batch_size, max_workers, county_data_dir
             )
 
             end_time = time.time()
@@ -2930,6 +2934,7 @@ def main():
     parser.add_argument('--parallel-categories', action='store_true', help='Process categories in parallel instead of sequentially')
     parser.add_argument('--category-workers', type=int, default=12, help='Number of category workers for parallel processing (default: 12)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory (default: output)')
+    parser.add_argument('--county-data-dir', type=str, default='county-data', help='County data directory (default: county-data)')
 
     args = parser.parse_args()
 
@@ -3023,7 +3028,8 @@ def main():
             batch_size=args.batch_size,
             max_workers=args.max_workers,
             parallel_categories=args.parallel_categories,
-            category_workers=args.category_workers
+            category_workers=args.category_workers,
+            county_data_dir=args.county_data_dir
         )
         if success:
             logger.info("🎉 Local folder processing completed successfully!")
@@ -3107,7 +3113,7 @@ def main():
             logger.info(f"📁 Found {len(categories)} category folders for {property_id}: {', '.join(categories)}")
 
             # Load county layout data for this property
-            county_layouts = load_county_layout_data(property_id)
+            county_layouts = load_county_layout_data(property_id, args.county_data_dir)
             if county_layouts:
                 logger.info(f"📋 Loaded {len(county_layouts)} county layout records for property {property_id}")
             else:
@@ -3580,7 +3586,7 @@ def process_s3_subfolder_no_batching(property_id, subfolder, prompt, schemas=Non
     return property_cost
 
 
-def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=12):
+def process_local_category_folder(property_id, category, prompt, schemas=None, batch_size=10, max_workers=12, county_data_dir=None):
     """Process images from local categorized folders with optimized settings for Colab"""
     start_time = time.time()
 
@@ -3608,7 +3614,7 @@ def process_local_category_folder(property_id, category, prompt, schemas=None, b
         logger.info(f"📁 Found {len(image_files)} images in local folder: {local_folder_path}")
 
         # Load county layout data for this property
-        county_layouts = load_county_layout_data(property_id)
+        county_layouts = load_county_layout_data(property_id, county_data_dir)
         if county_layouts:
             logger.info(f"📋 Loaded {len(county_layouts)} county layout records for property {property_id}")
         else:
