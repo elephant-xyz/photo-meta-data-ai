@@ -84,18 +84,18 @@ S3_BASE_PREFIX = os.getenv('S3_BASE_PREFIX', '')  # Will be set per property
 
 # IPFS Schema CIDs
 IPFS_SCHEMA_CIDS = {
-    "lot": "bafkreihjsl7r4nbuj4uipqiaejeaps55lsuitjzhl3yob266ejbekpkr6q",
-    "layout": "bafkreiexvcm7ghuymwc3xigfk2jh5xhv4kqs5qngctck5hwkvgu4gl22w4",
-    "structure": "bafkreid2wa56cecrm6ge4slmsm56xqy6j3gqlhldrljmruh64ams542xxe",
-    "utility": "bafkreihuoaw6fm5abblivzgepkxkhduc5mivhho4rcidp5lvgb7fhyuide",
-    "appliance": "bafkreieew4njulmeecnm3kah7w43eiali6lre5o45ttiyaqfjhb3ecu2mq",
-    "file": "bafkreihug7qtvmblmpgdox7ex476inddz4u365gl33epmqoatiecqjveqq",
-    "property": "bafkreih6x76aedhs7lqjk5uq4zskmfs33agku62b4flpq5s5pa6aek2gga"
+    "lot": "bafkreihtmbtbg5d7u6y27d2tthsal4pkop6m62vlqsooynx2rsslimxxwy",
+    "layout": "bafkreic4aaf7ofjnmjwaksqt5trbrxvo2seiagrxu7ry27sm67hvtrqobu",
+    "structure": "bafkreiel64ob77c5vdt7cv7zvevud7ktnunonm65t27czfkgkifittrkpe",
+    "utility": "bafkreidbkthm76etu5hyjzjzcetjvtspua72wuxhz5ynph7x57vaxagyuu",
+    "appliance": "bafkreiemjqw57hqbcm55mjx7u2s4u3x2d445fpcg4w6sh6e4jnbrnsyeca",
+    "file": "bafkreie2vdfw6hkmreqylutiy3sb6zlqyirrfwcgcyg53hxnvs7mmz6xhe",
+    "property": "bafkreiesp74h44r67wkqz2rbe6c2aq3blf5kwp3jc64nq6lga577o6uq2a"
 
 }
 
 # Relationship schema CID
-RELATIONSHIP_SCHEMA_CID = "bafkreih226p5vjhx33jwgq7trblyplfw7yhkununuuahgpfok3hnh5mjwq"
+RELATIONSHIP_SCHEMA_CID = "bafkreievgc2kirgxpphmigdrdy5r6putjax2mz6xyjcsvjhsz3zgckrr44"
 
 # County data directory
 COUNTY_DATA_DIR = "county-data"

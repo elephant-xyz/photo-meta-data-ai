@@ -14,7 +14,7 @@ import requests
 
 session = requests.Session()
 
-PHOTO_DATAGROUP_CID = "bafkreieqfj3awkqof55vva3vniakf346ruglowz5wzjt5zc7kh3xkri6he.json"
+PHOTO_DATAGROUP_CID = "bafkreievgc2kirgxpphmigdrdy5r6putjax2mz6xyjcsvjhsz3zgckrr44.json"
 
 
 class PhotoMetadata(NamedTuple):
