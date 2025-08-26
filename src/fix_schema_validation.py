@@ -415,6 +415,29 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
             }
             modified = True
             logger.info(f"  ➕ Added source_http_request to layout file")
+        
+        # Ensure space_index is not null in layout files
+        if "space_index" in data and data["space_index"] is None:
+            data["space_index"] = 1
+            modified = True
+            logger.info(f"  🔧 Fixed space_index: null -> 1")
+        elif "space_index" not in data:
+            data["space_index"] = 1
+            modified = True
+            logger.info(f"  ➕ Added missing space_index: 1")
+        
+        # Handle space_index in arrays of layouts
+        if isinstance(data, list):
+            for i, layout_item in enumerate(data):
+                if isinstance(layout_item, dict):
+                    if "space_index" in layout_item and layout_item["space_index"] is None:
+                        layout_item["space_index"] = i + 1
+                        modified = True
+                        logger.info(f"  🔧 Fixed space_index in layout[{i}]: null -> {i + 1}")
+                    elif "space_index" not in layout_item:
+                        layout_item["space_index"] = i + 1
+                        modified = True
+                        logger.info(f"  ➕ Added missing space_index in layout[{i}]: {i + 1}")
     
     # Add missing required fields (excluding file-only fields for non-file types)
     if add_missing_required_fields(data, schema, filename=filename):
