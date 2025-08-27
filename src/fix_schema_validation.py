@@ -295,7 +295,7 @@ def get_parcel_id_from_property_json(folder_path):
         logger.error(f"❌ Error reading property.json in {folder_path}: {e}")
         return None
 
-def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename: str, file_path: Path) -> bool:
+def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename: str, file_path: Path) -> tuple[bool, Any]:
     """Validate and fix data according to schema with enhanced logic from fix_and_submit_local.py."""
     modified = False
     
@@ -314,7 +314,7 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
     is_non_file_type = any(keyword in filename.lower() for keyword in ["structure", "lot", "utility", "appliance"])
     
     # Remove file-specific fields from non-file types if they exist
-    if is_non_file_type:
+    if is_non_file_type and isinstance(data, dict):
         file_only_fields = ["document_type", "file_format", "ipfs_url", "name", "original_url"]
         for field in file_only_fields:
             if field in data:
@@ -323,7 +323,7 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
                 logger.info(f"  🗑️  Removed file-only field '{field}' from {filename}")
     
     # Fix source_http_request (but not for relationship files)
-    if not filename.startswith("relationship_"):
+    if not filename.startswith("relationship_") and isinstance(data, dict):
         # Add source_http_request if it doesn't exist
         if "source_http_request" not in data:
             data["source_http_request"] = {
@@ -360,41 +360,114 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
         # Use property_id if available, otherwise use "N/A"
         request_id_value = property_id if property_id else "N/A"
         
-        if "request_identifier" not in data:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  ➕ Added request_identifier: {request_id_value}")
-        elif data["request_identifier"] != request_id_value:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  🔧 Updated request_identifier to: {request_id_value}")
+        # Only process if data is a dictionary (not a list)
+        if isinstance(data, dict):
+            if "request_identifier" not in data:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  ➕ Added request_identifier: {request_id_value}")
+            elif data["request_identifier"] != request_id_value:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  🔧 Updated request_identifier to: {request_id_value}")
     
     # Ensure appliance, lot, structure, and utility files have request_identifier (double-check)
     if any(keyword in filename for keyword in ["appliance", "lot", "structure", "utility"]) and not filename.startswith("relationship_"):
         request_id_value = property_id if property_id else "N/A"
-        if "request_identifier" not in data:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  ➕ Added request_identifier to {filename}: {request_id_value}")
-        elif data["request_identifier"] != request_id_value:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  🔧 Updated request_identifier in {filename} to: {request_id_value}")
+        # Only process if data is a dictionary (not a list)
+        if isinstance(data, dict):
+            if "request_identifier" not in data:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  ➕ Added request_identifier to {filename}: {request_id_value}")
+            elif data["request_identifier"] != request_id_value:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  🔧 Updated request_identifier in {filename} to: {request_id_value}")
     
     # Also ensure layout files have request_identifier
     if "layout" in filename and not filename.startswith("relationship_"):
         request_id_value = property_id if property_id else "N/A"
-        if "request_identifier" not in data:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  ➕ Added request_identifier to layout file {filename}: {request_id_value}")
-        elif data["request_identifier"] != request_id_value:
-            data["request_identifier"] = request_id_value
-            modified = True
-            logger.info(f"  🔧 Updated request_identifier in layout file {filename} to: {request_id_value}")
+        # Only process if data is a dictionary (not a list)
+        if isinstance(data, dict):
+            if "request_identifier" not in data:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  ➕ Added request_identifier to layout file {filename}: {request_id_value}")
+            elif data["request_identifier"] != request_id_value:
+                data["request_identifier"] = request_id_value
+                modified = True
+                logger.info(f"  🔧 Updated request_identifier in layout file {filename} to: {request_id_value}")
+    
+    # Merge multiple utility objects into one if utility file contains an array
+    if "utility" in filename and not filename.startswith("relationship_"):
+        try:
+            if isinstance(data, list) and len(data) > 1:
+                logger.info(f"  🔄 Found {len(data)} utility objects, merging into single object...")
+                
+                # Merge utility objects
+                merged_utility = {}
+                for i, utility_obj in enumerate(data):
+                    if isinstance(utility_obj, dict):
+                        for key, value in utility_obj.items():
+                            if key not in merged_utility:
+                                # First occurrence of this field
+                                merged_utility[key] = value
+                            elif merged_utility[key] is None and value is not None:
+                                # Replace null with non-null value
+                                merged_utility[key] = value
+                                logger.info(f"    🔧 Updated {key}: null -> {value}")
+                            elif merged_utility[key] != value and value is not None:
+                                # Different non-null values - resolve conflicts intelligently
+                                current_value = merged_utility[key]
+                                
+                                # Prefer non-null over null
+                                if current_value is None:
+                                    merged_utility[key] = value
+                                    logger.info(f"    🔧 Updated {key}: null -> {value}")
+                                # Prefer true over false for boolean fields
+                                elif isinstance(current_value, bool) and isinstance(value, bool):
+                                    if value and not current_value:
+                                        merged_utility[key] = value
+                                        logger.info(f"    🔧 Updated {key}: {current_value} -> {value} (preferring true over false)")
+                                    else:
+                                        logger.info(f"    ⚠️  Field {key} has conflicting boolean values: {current_value} vs {value}, keeping {current_value}")
+                                # For other conflicts, prefer the more specific/informative value
+                                elif current_value is None or (isinstance(value, str) and value != "None" and (isinstance(current_value, str) and current_value == "None")):
+                                    merged_utility[key] = value
+                                    logger.info(f"    🔧 Updated {key}: {current_value} -> {value} (preferring non-null)")
+                                else:
+                                    logger.info(f"    ⚠️  Field {key} has conflicting values: {current_value} vs {value}, keeping {current_value}")
+                
+                # Replace array with merged object
+                original_count = len(data)
+                # Create a new dictionary instead of trying to modify the list
+                data = merged_utility
+                modified = True
+                logger.info(f"  ✅ Merged {original_count} utility objects into single object with {len(merged_utility)} fields")
+                
+                # Ensure request_identifier is set
+                if "request_identifier" not in data or data["request_identifier"] is None:
+                    data["request_identifier"] = property_id if property_id else "N/A"
+                    modified = True
+                    logger.info(f"  ➕ Added request_identifier to merged utility: {data['request_identifier']}")
+                
+                # Ensure source_http_request is properly set
+                if "source_http_request" not in data or not data["source_http_request"]:
+                    data["source_http_request"] = {
+                        "method": "GET",
+                        "url": "https://pbcpao.gov/Property/Details"
+                    }
+                    modified = True
+                    logger.info(f"  ➕ Added source_http_request to merged utility")
+        except Exception as e:
+            logger.error(f"  ❌ Error during utility merging: {e}")
+            import traceback
+            logger.error(f"  Traceback: {traceback.format_exc()}")
+            # Don't re-raise, continue with original data
     
     # Ensure file document_type and file_format for file_xxxxxx files (but not relationship files)
-    if filename.startswith("file_") and "photo_metadata" in filename and not filename.startswith("relationship_"):
+    if filename.startswith("file_") and "photo_metadata" in filename and not filename.startswith("relationship_") and isinstance(data, dict):
         if "document_type" not in data or data["document_type"] != "PropertyImage":
             data["document_type"] = "PropertyImage"
             modified = True
@@ -407,7 +480,7 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
             logger.info(f"  🔧 Set file_format to jpeg")
     
     # Ensure layout files have source_http_request (but not relationship files)
-    if "layout" in filename and not filename.startswith("relationship_"):
+    if "layout" in filename and not filename.startswith("relationship_") and isinstance(data, dict):
         if "source_http_request" not in data:
             data["source_http_request"] = {
                 "method": "GET",
@@ -416,15 +489,40 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
             modified = True
             logger.info(f"  ➕ Added source_http_request to layout file")
         
+        # Remove appliance/appliace fields from layout files
+        def remove_appliance_fields(obj):
+            """Recursively remove appliance/appliace fields from layout objects."""
+            if isinstance(obj, dict):
+                keys_to_remove = []
+                for key in obj.keys():
+                    if "appliance" in key.lower() or "appliace" in key.lower():
+                        keys_to_remove.append(key)
+                    elif isinstance(obj[key], (dict, list)):
+                        remove_appliance_fields(obj[key])
+                
+                for key in keys_to_remove:
+                    del obj[key]
+                    modified = True
+                    logger.info(f"  🗑️  Removed appliance field '{key}' from layout file")
+            
+            elif isinstance(obj, list):
+                for item in obj:
+                    if isinstance(item, (dict, list)):
+                        remove_appliance_fields(item)
+        
+        # Remove appliance fields from layout data
+        remove_appliance_fields(data)
+        
         # Ensure space_index is not null in layout files
-        if "space_index" in data and data["space_index"] is None:
-            data["space_index"] = 1
-            modified = True
-            logger.info(f"  🔧 Fixed space_index: null -> 1")
-        elif "space_index" not in data:
-            data["space_index"] = 1
-            modified = True
-            logger.info(f"  ➕ Added missing space_index: 1")
+        if isinstance(data, dict):
+            if "space_index" in data and data["space_index"] is None:
+                data["space_index"] = 1
+                modified = True
+                logger.info(f"  🔧 Fixed space_index: null -> 1")
+            elif "space_index" not in data:
+                data["space_index"] = 1
+                modified = True
+                logger.info(f"  ➕ Added missing space_index: 1")
         
         # Handle space_index in arrays of layouts
         if isinstance(data, list):
@@ -440,8 +538,10 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
                         logger.info(f"  ➕ Added missing space_index in layout[{i}]: {i + 1}")
     
     # Add missing required fields (excluding file-only fields for non-file types)
-    if add_missing_required_fields(data, schema, filename=filename):
-        modified = True
+    # Skip for utility files that we've just merged, as we've already handled the structure
+    if not ("utility" in filename and isinstance(data, dict) and modified):
+        if add_missing_required_fields(data, schema, filename=filename):
+            modified = True
     
     # Get all boolean fields from the schema dynamically
     def get_boolean_fields_from_schema(schema_obj, path=""):
@@ -572,7 +672,7 @@ def validate_and_fix_data(data: Dict[str, Any], schema: Dict[str, Any], filename
     # Start recursive validation
     fix_enums_recursive(data, schema.get("properties", {}))
     
-    return modified
+    return modified, data
 
 def process_file(file_path: Path, schemas: Dict[str, Dict[str, Any]]) -> bool:
     """Process a single file and fix schema issues."""
@@ -593,12 +693,12 @@ def process_file(file_path: Path, schemas: Dict[str, Dict[str, Any]]) -> bool:
             return False
         
         # Validate and fix
-        modified = validate_and_fix_data(data, schema, file_path.name, file_path)
+        modified, updated_data = validate_and_fix_data(data, schema, file_path.name, file_path)
         
         if modified:
             # Save the fixed data
             with open(file_path, 'w') as f:
-                json.dump(data, f, indent=2)
+                json.dump(updated_data, f, indent=2)
             logger.info(f"✅ Fixed and saved: {file_path.name}")
             return True
         else:
